@@ -101,7 +101,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
             </svg>
           </div>
           <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 18, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
-            DIVAS POP
+            ORBITAL
           </span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
             MINHAS REDES
