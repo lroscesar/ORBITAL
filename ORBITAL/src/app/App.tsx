@@ -5,6 +5,21 @@ import { AuthGate } from "../auth/AuthGate"
 import { useAuth } from "../auth/AuthContext"
 import { EditarPerfil } from "../auth/AuthScreens"
 import { Dashboard, type RedeItem } from "./Dashboard"
+import { supabase } from "../lib/supabase"
+import { projectId, publicAnonKey } from "../utils/supabase/info" // ajuste o caminho se necessário
+
+const FN_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-08dcc7e8`
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? publicAnonKey
+  const res = await fetch(`${FN_BASE}${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...options.headers },
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Erro na requisição")
+  return res.json()
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +63,6 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
   const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
   const [loaded, setLoaded] = useState(false)
 
-  // Carrega o que já foi salvo desta rede (fica vazio se for nova)
   useEffect(() => {
     apiFetch(`/redes/${rede.id}`)
       .then(({ rede: salva }) => {
@@ -60,7 +74,6 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
       .finally(() => setLoaded(true))
   }, [rede.id])
 
-  // Autosave — salva 800ms depois da última mudança
   useEffect(() => {
     if (!loaded || !isEditor) return
     const t = setTimeout(() => {
@@ -68,7 +81,6 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
     }, 800)
     return () => clearTimeout(t)
   }, [atores, relacoes, constelacoes, loaded, isEditor, rede.id])
-  // ... resto do componente igual
 
 // ── Static star field ─────────────────────────────────────────────────────────
 
