@@ -41,48 +41,34 @@ interface Constelacao {
 
 // ── Initial data ──────────────────────────────────────────────────────────────
 
-const INITIAL_ATORES: Ator[] = [
-  { id: "universal", nome: "Universal Music", classe: "Organizacional", peso_hierarquico: 10, eh_ppo: true,  eh_caixa_preta: false, x: 390, y: 330 },
-  { id: "taylor",    nome: "Taylor Swift",    classe: "Humano",          peso_hierarquico: 8,  eh_ppo: false, eh_caixa_preta: false, x: 215, y: 175 },
-  { id: "ladygaga",  nome: "Lady Gaga",       classe: "Humano",          peso_hierarquico: 7,  eh_ppo: false, eh_caixa_preta: false, x: 195, y: 490 },
-  { id: "republic",  nome: "Republic Records",classe: "Organizacional",  peso_hierarquico: 6,  eh_ppo: false, eh_caixa_preta: true,  x: 565, y: 200 },
-  { id: "teamts",    nome: "Team Marketing",  classe: "Organizacional",  peso_hierarquico: 4,  eh_ppo: false, eh_caixa_preta: false, x: 100, y: 330 },
-  { id: "spotify",   nome: "Spotify",         classe: "Organizacional",  peso_hierarquico: 9,  eh_ppo: true,  eh_caixa_preta: true,  x: 840, y: 245 },
-  { id: "beyonce",   nome: "Beyoncé",         classe: "Humano",          peso_hierarquico: 8,  eh_ppo: false, eh_caixa_preta: false, x: 678, y: 92  },
-  { id: "madonna",   nome: "Madonna",         classe: "Humano",          peso_hierarquico: 7,  eh_ppo: false, eh_caixa_preta: false, x: 738, y: 438 },
-  { id: "algoritmo", nome: "Algoritmo IA",    classe: "Não humano",      peso_hierarquico: 5,  eh_ppo: false, eh_caixa_preta: true,  x: 1012, y: 152 },
-  { id: "tiktok",    nome: "TikTok",          classe: "Organizacional",  peso_hierarquico: 8,  eh_ppo: true,  eh_caixa_preta: false, x: 565, y: 698 },
-  { id: "olivia",    nome: "Olivia Rodrigo",  classe: "Humano",          peso_hierarquico: 6,  eh_ppo: false, eh_caixa_preta: false, x: 375, y: 612 },
-  { id: "indie",     nome: "Artistas Indie",  classe: "Humano",          peso_hierarquico: 3,  eh_ppo: false, eh_caixa_preta: false, x: 720, y: 822 },
-  { id: "grammy",    nome: "Grammy Awards",   classe: "Organizacional",  peso_hierarquico: 7,  eh_ppo: true,  eh_caixa_preta: false, x: 1045, y: 568 },
-  { id: "fas",       nome: "Fãs (Público)",   classe: "Não humano",      peso_hierarquico: 4,  eh_ppo: false, eh_caixa_preta: false, x: 922, y: 742 },
-  { id: "ticket",    nome: "Ticketmaster",    classe: "Organizacional",  peso_hierarquico: 5,  eh_ppo: false, eh_caixa_preta: false, x: 1182, y: 412 },
-]
+function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
+  const { user, isEditor, role } = useAuth()
+  const [atores, setAtores] = useState<Ator[]>([])
+  const [relacoes, setRelacoes] = useState<Relacao[]>([])
+  const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
+  const [loaded, setLoaded] = useState(false)
 
-const INITIAL_RELACOES: Relacao[] = [
-  { id: "r1",  tipo: "Imposição", ator_origem_id: "universal", ator_destino_id: "taylor"    },
-  { id: "r2",  tipo: "Obrigação", ator_origem_id: "taylor",    ator_destino_id: "universal", custo_recusa: 8, distancia_regulatoria: 3 },
-  { id: "r3",  tipo: "Promessa",  ator_origem_id: "taylor",    ator_destino_id: "fas"        },
-  { id: "r4",  tipo: "Delegação", ator_origem_id: "taylor",    ator_destino_id: "teamts"     },
-  { id: "r5",  tipo: "Imposição", ator_origem_id: "universal", ator_destino_id: "ladygaga"   },
-  { id: "r6",  tipo: "Promessa",  ator_origem_id: "ladygaga",  ator_destino_id: "fas"        },
-  { id: "r7",  tipo: "Imposição", ator_origem_id: "spotify",   ator_destino_id: "beyonce"    },
-  { id: "r8",  tipo: "Obrigação", ator_origem_id: "beyonce",   ator_destino_id: "spotify",   custo_recusa: 7, distancia_regulatoria: 3 },
-  { id: "r9",  tipo: "Promessa",  ator_origem_id: "beyonce",   ator_destino_id: "fas"        },
-  { id: "r10", tipo: "Delegação", ator_origem_id: "beyonce",   ator_destino_id: "algoritmo"  },
-  { id: "r11", tipo: "Imposição", ator_origem_id: "tiktok",    ator_destino_id: "olivia"     },
-  { id: "r12", tipo: "Promessa",  ator_origem_id: "olivia",    ator_destino_id: "fas"        },
-  { id: "r13", tipo: "Obrigação", ator_origem_id: "indie",     ator_destino_id: "tiktok",    custo_recusa: 5, distancia_regulatoria: 3 },
-  { id: "r14", tipo: "Imposição", ator_origem_id: "grammy",    ator_destino_id: "ticket"     },
-  { id: "r15", tipo: "Delegação", ator_origem_id: "spotify",   ator_destino_id: "algoritmo"  },
-]
+  // Carrega o que já foi salvo desta rede (fica vazio se for nova)
+  useEffect(() => {
+    apiFetch(`/redes/${rede.id}`)
+      .then(({ rede: salva }) => {
+        setAtores(salva.atores ?? [])
+        setRelacoes(salva.relacoes ?? [])
+        setConstelacoes(salva.constelacoes ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true))
+  }, [rede.id])
 
-const INITIAL_CONSTELACOES: Constelacao[] = [
-  { id: "c1", nome: "Constelação Universal", corpo_central_id: "universal", satelites: ["taylor", "ladygaga", "republic", "teamts"] },
-  { id: "c2", nome: "Constelação Spotify",   corpo_central_id: "spotify",   satelites: ["beyonce", "madonna", "algoritmo"]           },
-  { id: "c3", nome: "Constelação TikTok",    corpo_central_id: "tiktok",    satelites: ["olivia", "indie"]                           },
-  { id: "c4", nome: "Constelação Grammy",    corpo_central_id: "grammy",    satelites: ["ticket", "fas"]                             },
-]
+  // Autosave — salva 800ms depois da última mudança
+  useEffect(() => {
+    if (!loaded || !isEditor) return
+    const t = setTimeout(() => {
+      apiFetch(`/redes/${rede.id}`, { method: "PUT", body: JSON.stringify({ atores, relacoes, constelacoes }) }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(t)
+  }, [atores, relacoes, constelacoes, loaded, isEditor, rede.id])
+  // ... resto do componente igual
 
 // ── Static star field ─────────────────────────────────────────────────────────
 
@@ -1274,4 +1260,5 @@ function MField({ label, children }: { label: string; children: React.ReactNode 
       {children}
     </div>
   )
+}
 }
