@@ -3,6 +3,35 @@ import { Plus, Network, Trash2, LogOut, UserCircle, ChevronRight, Clock } from "
 import { useAuth } from "../auth/AuthContext"
 import { supabase } from "../lib/supabase"
 import { EditarPerfil } from "../auth/AuthScreens"
+import { useState, useEffect } from "react"
+import { projectId, publicAnonKey } from "../utils/supabase/info" // ajuste o caminho se necessárioexport function Dashboard({ onAbrirRede }: DashboardProps) {
+  
+const { user, isEditor, role } = useAuth()
+  const [redes, setRedes] = useState<RedeItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showNova, setShowNova] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiFetch("/redes")
+      .then(({ redes }) => setRedes(redes ?? []))
+      .catch(() => setRedes([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleCriarRede(nome: string, descricao: string) {
+    const { rede } = await apiFetch("/redes", { method: "POST", body: JSON.stringify({ nome, descricao }) })
+    setRedes(prev => [rede, ...prev])
+    setShowNova(false)
+    onAbrirRede(rede)
+  }
+
+  async function handleDeletar(id: string) {
+    await apiFetch(`/redes/${id}`, { method: "DELETE" })
+    setRedes(prev => prev.filter(r => r.id !== id))
+    setDeletingId(null)
+  }
 
 export interface RedeItem {
   id: string
@@ -53,6 +82,19 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
     setRedes(prev => prev.filter(r => r.id !== id))
     setDeletingId(null)
   }
+
+  const FN_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-08dcc7e8`
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? publicAnonKey
+  const res = await fetch(`${FN_BASE}${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...options.headers },
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Erro na requisição")
+  return res.json()
+}
 
   return (
     <div className="min-h-screen relative overflow-hidden"
