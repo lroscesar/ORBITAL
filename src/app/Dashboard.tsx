@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Plus, Network, Trash2, LogOut, UserCircle, ChevronRight, Clock } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { supabase } from "../lib/supabase"
 import { EditarPerfil } from "../auth/AuthScreens"
-import { projectId, publicAnonKey } from "../utils/supabase/info" // ajuste o caminho se necessário
 
 export interface RedeItem {
   id: string
@@ -30,23 +29,9 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-const FN_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-08dcc7e8`
-
-async function apiFetch(path: string, options: RequestInit = {}) {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token ?? publicAnonKey
-  const res = await fetch(`${FN_BASE}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...options.headers },
-  })
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Erro na requisição")
-  return res.json()
-}
-
 export function Dashboard({ onAbrirRede }: DashboardProps) {
   const { user, isEditor, role } = useAuth()
   const [redes, setRedes] = useState<RedeItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [showNova, setShowNova] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -54,26 +39,17 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
   const nome = user?.user_metadata?.nome ?? user?.email ?? "usuário"
   const initial = nome[0]?.toUpperCase() ?? "?"
 
-  useEffect(() => {
-    apiFetch("/redes")
-      .then(({ redes }) => setRedes(redes ?? []))
-      .catch(() => setRedes([]))
-      .finally(() => setLoading(false))
-  }, [])
-
   async function handleLogout() {
     await supabase.auth.signOut()
   }
 
-  async function handleCriarRede(nomeRede: string, descricao: string) {
-    const { rede } = await apiFetch("/redes", { method: "POST", body: JSON.stringify({ nome: nomeRede, descricao }) })
-    setRedes(prev => [rede, ...prev])
+  function handleCriarRede(novaRede: RedeItem) {
+    setRedes(prev => [novaRede, ...prev])
     setShowNova(false)
-    onAbrirRede(rede)
+    onAbrirRede(novaRede)
   }
 
-  async function handleDeletar(id: string) {
-    await apiFetch(`/redes/${id}`, { method: "DELETE" })
+  function handleDeletar(id: string) {
     setRedes(prev => prev.filter(r => r.id !== id))
     setDeletingId(null)
   }
@@ -93,6 +69,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
       <div className="relative z-10 flex items-center justify-between px-8 py-4 border-b"
         style={{ borderColor: "rgba(106,156,253,0.12)", background: "rgba(7,20,40,0.7)", backdropFilter: "blur(12px)" }}>
 
+        {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full flex items-center justify-center"
             style={{ background: "radial-gradient(circle at 35% 35%, #AEE4FF33, #033495aa)", border: "1px solid #AEE4FF44" }}>
@@ -108,6 +85,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
           </span>
         </div>
 
+        {/* User area */}
         <div className="flex items-center gap-3">
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0" }}>
             {role}
@@ -139,6 +117,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
       {/* Main content */}
       <div className="relative z-10 max-w-5xl mx-auto px-8 py-12">
 
+        {/* Hero greeting */}
         <div className="mb-12">
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0", letterSpacing: "0.2em", marginBottom: 8 }}>
             BEM-VINDO DE VOLTA
@@ -147,14 +126,13 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
             Olá, {nome.split(" ")[0]}
           </h1>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#5a7ab0", marginTop: 8 }}>
-            {loading
-              ? "Carregando suas redes…"
-              : redes.length === 0
-                ? "Você ainda não tem nenhuma rede. Crie sua primeira rede de atores."
-                : `${redes.length} rede${redes.length > 1 ? "s" : ""} criada${redes.length > 1 ? "s" : ""}.`}
+            {redes.length === 0
+              ? "Você ainda não tem nenhuma rede. Crie sua primeira rede de atores."
+              : `${redes.length} rede${redes.length > 1 ? "s" : ""} criada${redes.length > 1 ? "s" : ""}.`}
           </p>
         </div>
 
+        {/* Create button (Editor only) or read-only notice */}
         {isEditor ? (
           <button onClick={() => setShowNova(true)}
             className="flex items-center gap-3 px-6 py-4 rounded-xl border mb-10 transition-all group"
@@ -185,6 +163,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
           </div>
         )}
 
+        {/* Grid of redes */}
         {redes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {redes.map(rede => (
@@ -194,6 +173,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
                 onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(106,156,253,0.15)")}
                 onClick={() => onAbrirRede(rede)}>
 
+                {/* Card header */}
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -222,6 +202,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
                   )}
                 </div>
 
+                {/* Card footer */}
                 <div className="px-5 pb-4 flex items-center justify-between border-t"
                   style={{ borderColor: "rgba(106,156,253,0.1)" }}>
                   <div className="flex gap-4 mt-3">
@@ -241,7 +222,8 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
               </div>
             ))}
           </div>
-        ) : !loading && (
+        ) : (
+          /* Empty state */
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
               style={{ background: "rgba(106,156,253,0.06)", border: "1px dashed rgba(106,156,253,0.2)" }}>
@@ -259,48 +241,52 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
         )}
       </div>
 
+      {/* Modal: Nova Rede */}
       {showNova && <ModalNovaRede onClose={() => setShowNova(false)} onCreate={handleCriarRede} />}
-      {showProfile && <EditarPerfil onClose={() => setShowProfile(false)} />}
+
+      {/* Modal: Confirmar exclusão */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(1,6,18,0.88)", backdropFilter: "blur(10px)" }}>
-          <div className="w-full max-w-sm rounded-2xl border p-6"
+          <div className="rounded-2xl border p-6 w-80"
             style={{ background: "#071428", borderColor: "rgba(239,68,68,0.25)" }}>
             <p style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 15, fontWeight: 700, color: "#cee0ff", marginBottom: 8 }}>
-              Excluir esta rede?
+              Excluir rede?
             </p>
             <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#5a7ab0", marginBottom: 20 }}>
-              Essa ação não pode ser desfeita.
+              Essa ação é irreversível. Todos os atores e relações desta rede serão perdidos.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeletingId(null)}
-                className="flex-1 py-2.5 rounded-lg border"
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0" }}>
+                className="flex-1 py-2 rounded-lg border text-sm"
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0" }}>
                 Cancelar
               </button>
               <button onClick={() => handleDeletar(deletingId)}
-                className="flex-1 py-2.5 rounded-lg font-semibold"
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: "#ef4444", color: "#020c1e" }}>
+                className="flex-1 py-2 rounded-lg text-sm font-semibold"
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, background: "#ef4444", color: "#fff" }}>
                 Excluir
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal: Editar Perfil */}
+      {showProfile && <EditarPerfil onClose={() => setShowProfile(false)} />}
     </div>
   )
 }
 
-// ── Modal Nova Rede ─────────────��─────────────────────────────────────────────
+// ── Modal Nova Rede ───────────────────────────────────────────────────────────
 
 function ModalNovaRede({ onClose, onCreate }: {
   onClose: () => void
-  onCreate: (nome: string, descricao: string) => Promise<void>
+  onCreate: (rede: RedeItem) => void
 }) {
   const [nome, setNome] = useState("")
   const [descricao, setDescricao] = useState("")
   const [error, setError] = useState("")
-  const [enviando, setEnviando] = useState(false)
 
   const inputStyle: React.CSSProperties = {
     fontFamily: "'JetBrains Mono', monospace", fontSize: 12,
@@ -308,18 +294,17 @@ function ModalNovaRede({ onClose, onCreate }: {
     color: "#cee0ff", padding: "10px 14px", width: "100%", outline: "none",
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!nome.trim()) { setError("Dê um nome para a rede."); return }
-    setError("")
-    setEnviando(true)
-    try {
-      await onCreate(nome.trim(), descricao.trim())
-    } catch {
-      setError("Não foi possível criar a rede. Tente novamente.")
-    } finally {
-      setEnviando(false)
-    }
+    onCreate({
+      id: "rede-" + Date.now(),
+      nome: nome.trim(),
+      descricao: descricao.trim(),
+      criadaEm: new Date().toISOString(),
+      totalAtores: 0,
+      totalRelacoes: 0,
+    })
   }
 
   return (
@@ -381,15 +366,15 @@ function ModalNovaRede({ onClose, onCreate }: {
           )}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} disabled={enviando}
+            <button type="button" onClick={onClose}
               className="flex-1 py-2.5 rounded-lg border"
-              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0", opacity: enviando ? 0.5 : 1 }}>
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0" }}>
               Cancelar
             </button>
-            <button type="submit" disabled={enviando}
+            <button type="submit"
               className="flex-1 py-2.5 rounded-lg font-semibold"
-              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: "#6A9CFD", color: "#020c1e", opacity: enviando ? 0.7 : 1 }}>
-              {enviando ? "Criando…" : "Criar e Entrar"}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: "#6A9CFD", color: "#020c1e" }}>
+              Criar e Entrar
             </button>
           </div>
         </form>
