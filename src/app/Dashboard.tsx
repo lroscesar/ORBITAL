@@ -291,7 +291,7 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
   )
 }
 
-// ── Modal Nova Rede ─────────────��─────────────────────────────────────────────
+// ── Modal Nova Rede ──────────────────────────────────────────────────────────
 
 function ModalNovaRede({ onClose, onCreate }: {
   onClose: () => void
