@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Plus, X, GitBranch, Download, ChevronRight, UserCircle, ArrowLeft, EyeOff } from "lucide-react"
+import { Plus, X, GitBranch, Download, ChevronRight, UserCircle, ArrowLeft, EyeOff, Eye } from "lucide-react"
 import { AuthProvider } from "../auth/AuthContext"
 import { AuthGate } from "../auth/AuthGate"
 import { useAuth } from "../auth/AuthContext"
@@ -689,7 +689,7 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
         <div>
           <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 3 }}>Estado</div>
           <div className="flex items-center gap-1.5" style={{ fontFamily: mono, fontSize: 11, color: parent.eh_caixa_preta ? "#6A9CFD" : "#9dc8f5" }}>
-            {parent.eh_caixa_preta ? <EyeOff size={12} /> : <span>□</span>}
+            {parent.eh_caixa_preta ? <EyeOff size={12} /> : <Eye size={12} />}
             {parent.eh_caixa_preta ? "Colapsada" : "Expandida"}
           </div>
         </div>
@@ -890,7 +890,7 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                   borderColor: ator.eh_caixa_preta ? "#6A9CFD55" : "rgba(106,156,253,0.18)",
                   color: ator.eh_caixa_preta ? "#6A9CFD" : "#5a7ab0" }}>
                 <span className="inline-flex items-center gap-1.5">
-                  {ator.eh_caixa_preta ? <EyeOff size={12} /> : <span>□</span>}
+                  {ator.eh_caixa_preta ? <EyeOff size={12} /> : <Eye size={12} />}
                   {ator.eh_caixa_preta ? "Colapsado — clique p/ expandir" : "Expandido — clique p/ colapsar"}
                 </span>
               </button>
