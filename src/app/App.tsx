@@ -5,6 +5,7 @@ import { AuthGate } from "../auth/AuthGate"
 import { useAuth } from "../auth/AuthContext"
 import { EditarPerfil } from "../auth/AuthScreens"
 import { Dashboard, type RedeItem } from "./Dashboard"
+import { supabase } from "../lib/supabase" // mesmo cliente usado no Dashboard
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,37 +39,6 @@ interface Constelacao {
   corpo_central_id: string
   satelites: string[]
 }
-
-// ── Initial data ──────────────────────────────────────────────────────────────
-
-function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
-  const { user, isEditor, role } = useAuth()
-  const [atores, setAtores] = useState<Ator[]>([])
-  const [relacoes, setRelacoes] = useState<Relacao[]>([])
-  const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
-  const [loaded, setLoaded] = useState(false)
-
-  // Carrega o que já foi salvo desta rede (fica vazio se for nova)
-  useEffect(() => {
-    apiFetch(`/redes/${rede.id}`)
-      .then(({ rede: salva }) => {
-        setAtores(salva.atores ?? [])
-        setRelacoes(salva.relacoes ?? [])
-        setConstelacoes(salva.constelacoes ?? [])
-      })
-      .catch(() => {})
-      .finally(() => setLoaded(true))
-  }, [rede.id])
-
-  // Autosave — salva 800ms depois da última mudança
-  useEffect(() => {
-    if (!loaded || !isEditor) return
-    const t = setTimeout(() => {
-      apiFetch(`/redes/${rede.id}`, { method: "PUT", body: JSON.stringify({ atores, relacoes, constelacoes }) }).catch(() => {})
-    }, 800)
-    return () => clearTimeout(t)
-  }, [atores, relacoes, constelacoes, loaded, isEditor, rede.id])
-  // ... resto do componente igual
 
 // ── Static star field ─────────────────────────────────────────────────────────
 
@@ -147,10 +117,50 @@ function AppRouter() {
 // ── Main app (authenticated) ──────────────────────────────────────────────────
 
 function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
+  // 🔑 CORREÇÃO 1: pega user/isEditor/role do contexto de auth
   const { user, isEditor, role } = useAuth()
-  const [atores, setAtores] = useState<Ator[]>(INITIAL_ATORES)
-  const [relacoes, setRelacoes] = useState<Relacao[]>(INITIAL_RELACOES)
-  const [constelacoes] = useState<Constelacao[]>(INITIAL_CONSTELACOES)
+
+  const [atores, setAtores] = useState<Ator[]>([])
+  const [relacoes, setRelacoes] = useState<Relacao[]>([])
+  const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  // 🔑 CORREÇÃO 2: carrega os dados da rede do Supabase (vazio se for rede nova)
+  useEffect(() => {
+    let ativo = true
+    setLoaded(false)
+    supabase
+      .from("redes")
+      .select("dados")
+      .eq("id", rede.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!ativo) return
+        const d = (!error && data?.dados) ? data.dados : {}
+        setAtores(d.atores ?? [])
+        setRelacoes(d.relacoes ?? [])
+        setConstelacoes(d.constelacoes ?? [])
+        setLoaded(true)
+      })
+    return () => { ativo = false }
+  }, [rede.id])
+
+  // 🔑 CORREÇÃO 3: autosave no Supabase (só editor, 800ms após a última mudança)
+  useEffect(() => {
+    if (!loaded || !isEditor) return
+    const t = setTimeout(() => {
+      supabase
+        .from("redes")
+        .update({
+          dados: { atores, relacoes, constelacoes },
+          total_atores: atores.length,
+          total_relacoes: relacoes.length,
+        })
+        .eq("id", rede.id)
+        .then(() => {})
+    }, 800)
+    return () => clearTimeout(t)
+  }, [atores, relacoes, constelacoes, loaded, isEditor, rede.id])
 
   const [tr, setTr] = useState({ x: 0, y: 0, scale: 1 })
   const [dragging, setDragging] = useState(false)
@@ -663,7 +673,8 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
     setPeso(4)
     setShowForm(false)
   }
-}
+  // 🔑 CORREÇÃO 5: o "}" que fechava a função aqui foi REMOVIDO.
+  // Antes, a ComposicaoTab fechava antes do return e quebrava tudo.
 
   return (
     <div className="flex flex-col gap-4">
