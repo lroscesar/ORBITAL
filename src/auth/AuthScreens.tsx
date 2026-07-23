@@ -28,7 +28,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>DIVAS POP</div>
+            <div style={{ fontFamily: mono, fontSize: 17, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>ORBITAL</div>
             <div style={{ fontFamily: mono, fontSize: 9, color: MUT, letterSpacing: "0.1em" }}>TAR · TEORIA DA PROMESSA</div>
           </div>
         </div>
