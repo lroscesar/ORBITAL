@@ -296,8 +296,8 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 20, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
-            <div style={{ fontFamily: mono, fontSize: 12, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL✧</div>
+            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
+            <div style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL✧</div>
           </div>
         </div>
 
@@ -979,10 +979,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             color: `${TIPO_COLOR[relacao.tipo]}cc`,
             fontFamily: mono,
           }}>
-            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs (RF07/RD02)."}
-            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão (RF04)."}
-            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória (RF17). ◆ indica o custo de recusa."}
-            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa (RF06)."}
+            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs."}
+            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão."}
+            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória. ◆ indica o custo de recusa."}
+            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa."}
           </div>
         </>
       )}
@@ -1114,7 +1114,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
   }
 
   return (
-    <ModalShell title="Cadastrar Ator · RF01/RF02" onClose={onClose}>
+    <ModalShell title="Cadastrar Ator" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Nome do Ator">
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
@@ -1138,7 +1138,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           </div>
         </MField>
 
-        <MField label={`Peso Hierárquico · RF10/RF16: ${peso}/10`}>
+        <MField label={`Peso Hierárquico ${peso}/10`}>
           <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
             className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
           <div className="flex justify-between mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0" }}>
@@ -1149,7 +1149,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
         <div className="flex gap-6">
           {[
             { label: "★ PPO · RF09", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
-            { label: "Caixa-preta · RF08", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
+            { label: "Caixa-preta", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
           ].map(({ label, icon: Icon, val, set, color }) => (
             <label key={label} className="flex items-center gap-2 cursor-pointer" onClick={() => set(!val)}>
               <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
@@ -1200,7 +1200,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   }
 
   return (
-    <ModalShell title="Registrar Relação · RF03–RF06" onClose={onClose}>
+    <ModalShell title="Registrar Relação" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Tipo de Relação">
           <div className="grid grid-cols-2 gap-2">
@@ -1237,10 +1237,10 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label={`Custo de Recusa · RF10: ${custo}/10`}>
+            <MField label={`Custo de Recusa: ${custo}/10`}>
               <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
             </MField>
-            <MField label={`Distância Regulatória · RF17: ${dist}/5`}>
+            <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
             </MField>
           </>
