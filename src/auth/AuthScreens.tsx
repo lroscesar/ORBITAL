@@ -28,7 +28,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 17, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>ORBITAL</div>
+            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>ORBITAL</div>
             <div style={{ fontFamily: mono, fontSize: 9, color: MUT, letterSpacing: "0.1em" }}>TAR · TEORIA DA PROMESSA</div>
           </div>
         </div>
@@ -141,7 +141,7 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
     <Shell>
       <div>
         <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Criar conta</h2>
-        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF21 — Cadastro de usuário</p>
+        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Cadastro de usuário</p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -207,7 +207,7 @@ export function Login({ onGoRegister, onGoRecover, onTestAccess }: { onGoRegiste
       <Shell>
         <div>
           <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Entrar</h2>
-          <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF22 — Login de usuário</p>
+          <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Login de usuário</p>
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
@@ -276,7 +276,7 @@ export function RecuperarSenha({ onGoLogin }: { onGoLogin: () => void }) {
     <Shell>
       <div>
         <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Recuperar senha</h2>
-        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF23 — Reset via e-mail</p>
+        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Recuperação via e-mail</p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-4">

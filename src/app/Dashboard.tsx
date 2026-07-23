@@ -142,10 +142,10 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
               <polygon points="6.5,1 12,10 1,10" fill="#AEE4FF" opacity="0.9" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 18, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
-          ORBITAL
+          <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 20, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
+          ORBITAL✧
           </span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
             MINHAS REDES
           </span>
         </div>
