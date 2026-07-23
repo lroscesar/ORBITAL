@@ -296,8 +296,8 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>DIVAS POP</div>
-            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", letterSpacing: "0.1em" }}>{rede.nome}</div>
+            <div style={{ fontFamily: mono, fontSize: 20, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL✧</div>
           </div>
         </div>
 
