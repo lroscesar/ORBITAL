@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Plus, X, GitBranch, Download, ChevronRight, UserCircle, ArrowLeft } from "lucide-react"
+import { Plus, X, GitBranch, Download, ChevronRight, UserCircle, ArrowLeft, EyeOff } from "lucide-react"
 import { AuthProvider } from "../auth/AuthContext"
 import { AuthGate } from "../auth/AuthGate"
 import { useAuth } from "../auth/AuthContext"
@@ -296,7 +296,7 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>ORBITAL</div>
+            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>DIVAS POP</div>
             <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", letterSpacing: "0.1em" }}>{rede.nome}</div>
           </div>
         </div>
@@ -522,11 +522,15 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
                           </text>
                         </>
                       ) : (
-                        <text textAnchor="middle" dominantBaseline="middle"
-                          fontSize={r * 0.5} fill="rgba(174,228,255,0.4)"
-                          style={{ fontFamily: mono }}>
-                          ▪
-                        </text>
+                        <g transform={`translate(${-r * 0.32}, ${-r * 0.28}) scale(${r * 0.026})`}
+                          stroke="rgba(174,228,255,0.55)" strokeWidth={1.8} fill="none"
+                          strokeLinecap="round" strokeLinejoin="round">
+                          {/* olho oculto (EyeOff) */}
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </g>
                       )}
                     </>
                   )}
@@ -601,9 +605,11 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
               ))}
             </LgSection>
             <LgSection title="Marcadores">
-              {[{ sym: "★", color: "#FFD700", label: "PPO" }, { sym: "▪", color: "#6A9CFD", label: "Caixa-preta" }].map(({ sym, color, label }) => (
+              {[{ sym: "★", icon: null, color: "#FFD700", label: "PPO" }, { sym: null, icon: EyeOff, color: "#6A9CFD", label: "Caixa-preta" }].map(({ sym, icon: Icon, color, label }) => (
                 <div key={label} className="flex items-center gap-2">
-                  <span className="w-4 text-center flex-shrink-0" style={{ color, fontSize: 12 }}>{sym}</span>
+                  <span className="w-4 text-center flex-shrink-0 flex items-center justify-center" style={{ color, fontSize: 12 }}>
+                    {Icon ? <Icon size={13} /> : sym}
+                  </span>
                   <span style={{ fontFamily: mono, fontSize: 11, color: "#9dc8f5" }}>{label}</span>
                 </div>
               ))}
@@ -682,8 +688,9 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
       <div className="flex items-center justify-between p-3 rounded-lg border" style={{ borderColor: "rgba(106,156,253,0.15)", background: "rgba(106,156,253,0.04)" }}>
         <div>
           <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 3 }}>Estado</div>
-          <div style={{ fontFamily: mono, fontSize: 11, color: parent.eh_caixa_preta ? "#6A9CFD" : "#9dc8f5" }}>
-            {parent.eh_caixa_preta ? "▪ Colapsada" : "□ Expandida"}
+          <div className="flex items-center gap-1.5" style={{ fontFamily: mono, fontSize: 11, color: parent.eh_caixa_preta ? "#6A9CFD" : "#9dc8f5" }}>
+            {parent.eh_caixa_preta ? <EyeOff size={12} /> : <span>□</span>}
+            {parent.eh_caixa_preta ? "Colapsada" : "Expandida"}
           </div>
         </div>
         <button onClick={() => onToggleBlackBox(parent.id)}
@@ -882,7 +889,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                 style={{ fontFamily: mono, background: ator.eh_caixa_preta ? "rgba(106,156,253,0.1)" : "transparent",
                   borderColor: ator.eh_caixa_preta ? "#6A9CFD55" : "rgba(106,156,253,0.18)",
                   color: ator.eh_caixa_preta ? "#6A9CFD" : "#5a7ab0" }}>
-                {ator.eh_caixa_preta ? "▪ Colapsado — clique p/ expandir" : "□ Expandido — clique p/ colapsar"}
+                <span className="inline-flex items-center gap-1.5">
+                  {ator.eh_caixa_preta ? <EyeOff size={12} /> : <span>□</span>}
+                  {ator.eh_caixa_preta ? "Colapsado — clique p/ expandir" : "Expandido — clique p/ colapsar"}
+                </span>
               </button>
             </PField>
 
@@ -1138,15 +1148,17 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
 
         <div className="flex gap-6">
           {[
-            { label: "★ PPO · RF09", val: ppo, set: setPpo, color: "#FFD700" },
-            { label: "▪ Caixa-preta · RF08", val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
-          ].map(({ label, val, set, color }) => (
+            { label: "★ PPO · RF09", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
+            { label: "Caixa-preta · RF08", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
+          ].map(({ label, icon: Icon, val, set, color }) => (
             <label key={label} className="flex items-center gap-2 cursor-pointer" onClick={() => set(!val)}>
               <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
                 style={{ background: val ? `${color}22` : "transparent", borderColor: val ? `${color}88` : "rgba(106,156,253,0.25)" }}>
                 {val && <span style={{ color, fontSize: 10, lineHeight: 1 }}>✓</span>}
               </div>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: val ? color : "#5a7ab0" }}>{label}</span>
+              <span className="inline-flex items-center gap-1.5" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: val ? color : "#5a7ab0" }}>
+                {Icon && <Icon size={11} />}{label}
+              </span>
             </label>
           ))}
         </div>
