@@ -238,14 +238,31 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
   const [msg, setMsg] = useState("")
   const [erro, setErro] = useState("")
 
+  // guarda os e-mails de convites ACEITOS deste grupo (fallback p/ membros antigos)
+  const [emailsAceitos, setEmailsAceitos] = useState<string[]>([])
+
   const carregar = useCallback(async () => {
-    const [m, c] = await Promise.all([
+    const [m, c, ac] = await Promise.all([
       supabase.from("grupo_membros").select("*").eq("grupo_id", grupo.id),
       supabase.from("convites").select("*").eq("grupo_id", grupo.id).eq("status", "pendente"),
+      supabase.from("convites").select("email").eq("grupo_id", grupo.id).eq("status", "aceito"),
     ])
-    setMembros(m.data ?? [])
+    const membrosData = (m.data ?? []) as Membro[]
+    setMembros(membrosData)
     setConvites(c.data ?? [])
-  }, [grupo.id])
+    setEmailsAceitos((ac.data ?? []).map((x: any) => x.email))
+
+    // AUTOCORREÇÃO: se EU sou membro antigo sem nome/e-mail salvo, preencho agora
+    if (user) {
+      const eu = membrosData.find(mm => mm.user_id === user.id)
+      if (eu && !eu.email) {
+        const meuNome = user.user_metadata?.nome ?? user.email ?? null
+        await supabase.from("grupo_membros")
+          .update({ nome: meuNome, email: user.email ?? null })
+          .eq("grupo_id", grupo.id).eq("user_id", user.id)
+      }
+    }
+  }, [grupo.id, user])
 
   useEffect(() => { carregar() }, [carregar])
 
@@ -383,7 +400,9 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
                   {m.papel[0]?.toUpperCase()}
                 </div>
                 <span style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff" }}>
-                  {m.user_id === user?.id ? "Você" : (m.nome || m.email || "Membro")}
+                  {m.user_id === user?.id
+                    ? (m.nome || user?.email || "Você")
+                    : (m.nome || m.email || (emailsAceitos.length === 1 ? emailsAceitos[0] : "Membro"))}
                 </span>
                 <span style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginLeft: "auto" }}>
                   {m.papel}
