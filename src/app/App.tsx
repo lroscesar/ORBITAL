@@ -1131,7 +1131,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
       <form onSubmit={submit} className="space-y-4">
         <MField label="Nome do Ator">
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
-            placeholder="ex: Billie Eilish"
+            placeholder="ex: Banco Central"
             className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
             style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>
