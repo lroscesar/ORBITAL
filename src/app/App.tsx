@@ -112,7 +112,7 @@ function AppRouter() {
 
   // Rede aberta tem prioridade
   if (redeAtiva) {
-    return <DivasPop rede={redeAtiva} onVoltar={() => setRedeAtiva(null)} />
+    return <Orbital rede={redeAtiva} onVoltar={() => setRedeAtiva(null)} />
   }
   // Tela de grupos
   if (verGrupos) {
@@ -129,7 +129,7 @@ function AppRouter() {
 
 // ── Main app (authenticated) ──────────────────────────────────────────────────
 
-function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
+function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   // 🔑 CORREÇÃO 1: pega user/isEditor/role do contexto de auth
   const { user, isEditor, role } = useAuth()
 
@@ -137,6 +137,34 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
   const [relacoes, setRelacoes] = useState<Relacao[]>([])
   const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
   const [loaded, setLoaded] = useState(false)
+
+  // 🔑 PAPÉIS DE GRUPO: descobre meu papel no grupo desta rede (se for de grupo)
+  //   null enquanto carrega; "pessoal" quando a rede não é de grupo.
+  const [papelNoGrupo, setPapelNoGrupo] = useState<string | null>(null)
+
+  useEffect(() => {
+    let ativo = true
+    if (!rede.grupoId) {           // rede pessoal → não depende de grupo
+      setPapelNoGrupo("pessoal")
+      return
+    }
+    setPapelNoGrupo(null)
+    supabase
+      .from("grupo_membros")
+      .select("papel")
+      .eq("grupo_id", rede.grupoId)
+      .eq("user_id", user?.id ?? "")
+      .single()
+      .then(({ data }) => { if (ativo) setPapelNoGrupo(data?.papel ?? "leitor") })
+    return () => { ativo = false }
+  }, [rede.grupoId, user?.id])
+
+  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda".
+  //   - Rede pessoal: usa o isEditor do login.
+  //   - Rede de grupo: só edita se for dono ou editor NAQUELE grupo.
+  const podeEditar = rede.grupoId
+    ? (papelNoGrupo === "dono" || papelNoGrupo === "editor")
+    : isEditor
 
   // 🔑 CORREÇÃO 2: carrega os dados da rede do Supabase (vazio se for rede nova)
   useEffect(() => {
@@ -158,9 +186,9 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
     return () => { ativo = false }
   }, [rede.id])
 
-  // 🔑 CORREÇÃO 3: autosave no Supabase (só editor, 800ms após a última mudança)
+  // 🔑 CORREÇÃO 3: autosave no Supabase (só quem pode editar, 800ms após a mudança)
   useEffect(() => {
-    if (!loaded || !isEditor) return
+    if (!loaded || !podeEditar) return
     const t = setTimeout(() => {
       supabase
         .from("redes")
@@ -173,7 +201,7 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
         .then(() => {})
     }, 800)
     return () => clearTimeout(t)
-  }, [atores, relacoes, constelacoes, loaded, isEditor, rede.id])
+  }, [atores, relacoes, constelacoes, loaded, podeEditar, rede.id])
 
   const [tr, setTr] = useState({ x: 0, y: 0, scale: 1 })
   const [dragging, setDragging] = useState(false)
@@ -309,7 +337,7 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 20, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
+            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
             <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL</div>
           </div>
         </div>
@@ -328,7 +356,7 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
           ))}
         </div>
 
-        {isEditor && (
+        {podeEditar && (
           <>
             <TBtn icon={<Plus size={11} />} label="Ator"    color="#6A9CFD" onClick={() => setShowAddActor(true)} />
             <TBtn icon={<GitBranch size={11} />} label="Relação" color="#FFB8D0" onClick={() => setShowAddRelation(true)} />
@@ -642,7 +670,7 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
             onCascade={runCascade}
             hasCascade={hasCascade}
             onAddChildActor={(child) => setAtores(prev => [...prev, child])}
-            canEdit={isEditor}
+            canEdit={podeEditar}
             onDeleteAtor={id => { setAtores(prev => prev.filter(a => a.id !== id && a.parent_id !== id)); setRelacoes(prev => prev.filter(r => r.ator_origem_id !== id && r.ator_destino_id !== id)); setSelected(null) }}
             onDeleteRelacao={id => { setRelacoes(prev => prev.filter(r => r.id !== id)); setSelected(null) }}
             onEditAtor={(updated) => setAtores(prev => prev.map(a => a.id === updated.id ? updated : a))}
@@ -652,8 +680,8 @@ function DivasPop({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) 
       </div>
 
       {/* Modals — editor-only */}
-      {isEditor && showAddActor    && <AddActorModal    atores={atores} onAdd={a => { setAtores(p => [...p, a]);    setShowAddActor(false)    }} onClose={() => setShowAddActor(false)} />}
-      {isEditor && showAddRelation && <AddRelationModal atores={atores} onAdd={r => { setRelacoes(p => [...p, r]); setShowAddRelation(false) }} onClose={() => setShowAddRelation(false)} />}
+      {podeEditar && showAddActor    && <AddActorModal    atores={atores} onAdd={a => { setAtores(p => [...p, a]);    setShowAddActor(false)    }} onClose={() => setShowAddActor(false)} />}
+      {podeEditar && showAddRelation && <AddRelationModal atores={atores} onAdd={r => { setRelacoes(p => [...p, r]); setShowAddRelation(false) }} onClose={() => setShowAddRelation(false)} />}
 
       {/* Profile modal */}
       {showProfile && user && <EditarPerfil user={user} onClose={() => setShowProfile(false)} />}
@@ -1131,7 +1159,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
       <form onSubmit={submit} className="space-y-4">
         <MField label="Nome do Ator">
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
-            placeholder="ex: Banco Central"
+            placeholder="ex: Billie Eilish"
             className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
             style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>

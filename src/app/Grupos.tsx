@@ -223,6 +223,7 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
   const [membros, setMembros] = useState<Membro[]>([])
   const [convites, setConvites] = useState<Convite[]>([])
   const [email, setEmail] = useState("")
+  const [papelConvite, setPapelConvite] = useState<"editor" | "leitor">("editor")
   const [msg, setMsg] = useState("")
   const [erro, setErro] = useState("")
 
@@ -243,15 +244,34 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
     const alvo = email.trim().toLowerCase()
     if (!alvo || !alvo.includes("@")) { setErro("Digite um e-mail válido."); return }
     const { error } = await supabase.from("convites")
-      .insert({ grupo_id: grupo.id, email: alvo, papel: "editor", convidado_por: user!.id })
+      .insert({ grupo_id: grupo.id, email: alvo, papel: papelConvite, convidado_por: user!.id })
     if (error) { setErro("Erro ao convidar: " + error.message); return }
-    setMsg(`Convite registrado para ${alvo}. A pessoa verá ao logar com esse e-mail.`)
+    setMsg(`Convite registrado para ${alvo} como ${papelConvite}. A pessoa verá ao logar com esse e-mail.`)
     setEmail("")
     carregar()
   }
 
   async function cancelarConvite(id: string) {
     await supabase.from("convites").delete().eq("id", id)
+    carregar()
+  }
+
+  // Dono troca o papel de um membro (editor <-> leitor)
+  async function trocarPapel(m: Membro) {
+    if (m.papel === "dono") return // não mexe no dono
+    const novo = m.papel === "editor" ? "leitor" : "editor"
+    const { error } = await supabase.from("grupo_membros")
+      .update({ papel: novo }).eq("grupo_id", grupo.id).eq("user_id", m.user_id)
+    if (error) { setErro("Erro ao trocar papel: " + error.message); return }
+    carregar()
+  }
+
+  // Dono remove um membro do grupo
+  async function removerMembro(m: Membro) {
+    if (m.papel === "dono") return // não remove o dono
+    const { error } = await supabase.from("grupo_membros")
+      .delete().eq("grupo_id", grupo.id).eq("user_id", m.user_id)
+    if (error) { setErro("Erro ao remover: " + error.message); return }
     carregar()
   }
 
@@ -283,12 +303,29 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
                 placeholder="email@exemplo.com"
                 style={{ flex: 1, fontFamily: mono, fontSize: 12, background: "#020c1e", borderRadius: 8,
                   border: "1px solid rgba(106,156,253,0.18)", color: "#cee0ff", padding: "10px 14px", outline: "none" }} />
+              {/* Seletor editor / leitor */}
+              <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(106,156,253,0.18)" }}>
+                {(["editor", "leitor"] as const).map(p => (
+                  <button key={p} type="button" onClick={() => setPapelConvite(p)}
+                    className="px-3"
+                    style={{
+                      fontFamily: mono, fontSize: 10,
+                      background: papelConvite === p ? "rgba(106,156,253,0.18)" : "transparent",
+                      color: papelConvite === p ? "#cee0ff" : "#5a7ab0",
+                    }}>
+                    {p === "editor" ? "Editor" : "Leitor"}
+                  </button>
+                ))}
+              </div>
               <button type="submit"
                 className="flex items-center gap-1.5 px-4 rounded-lg font-semibold"
                 style={{ fontFamily: mono, fontSize: 11, background: "#6A9CFD", color: "#020c1e" }}>
                 <UserPlus size={13} /> Convidar
               </button>
             </form>
+            <p style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginTop: 6 }}>
+              Editor mexe nas redes do grupo · Leitor só visualiza
+            </p>
             {msg && <p style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD", marginTop: 8 }}>{msg}</p>}
             {erro && <p style={{ fontFamily: mono, fontSize: 10, color: "#ef4444", marginTop: 8 }}>{erro}</p>}
           </div>
@@ -341,6 +378,23 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
                   {m.papel}
                 </span>
                 {m.papel === "dono" && <Crown size={11} style={{ color: "#FFD700" }} />}
+                {/* Controles do dono: trocar papel + remover (não para o próprio dono) */}
+                {souDono && m.papel !== "dono" && (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => trocarPapel(m)}
+                      className="px-2 py-1 rounded-md border"
+                      style={{ fontFamily: mono, fontSize: 9, borderColor: "rgba(106,156,253,0.25)", color: "#9dc8f5" }}
+                      title="Alternar editor/leitor">
+                      {m.papel === "editor" ? "→ leitor" : "→ editor"}
+                    </button>
+                    <button onClick={() => removerMembro(m)} style={{ color: "#5a7ab0" }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "#5a7ab0")}
+                      title="Remover do grupo">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

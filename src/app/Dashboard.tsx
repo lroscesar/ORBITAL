@@ -13,6 +13,7 @@ export interface RedeItem {
   criadaEm: string
   totalAtores: number
   totalRelacoes: number
+  grupoId: string | null  // null = rede pessoal; senão, id do grupo
 }
 
 interface DashboardProps {
@@ -41,6 +42,7 @@ function rowToRede(row: any): RedeItem {
     criadaEm: row.criada_em,
     totalAtores: row.total_atores ?? 0,
     totalRelacoes: row.total_relacoes ?? 0,
+    grupoId: row.grupo_id ?? null,
   }
 }
 
@@ -162,7 +164,7 @@ export function Dashboard({ onAbrirRede, onAbrirGrupos }: DashboardProps) {
             </svg>
           </div>
           <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 18, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
-            ORBITAL ✧
+             ORBITAL ✧
           </span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
             MINHAS REDES
