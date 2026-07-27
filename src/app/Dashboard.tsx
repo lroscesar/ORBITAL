@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
-import { Plus, Network, Trash2, LogOut, UserCircle, ChevronRight, Clock } from "lucide-react"
+import { Plus, Network, Trash2, LogOut, UserCircle, ChevronRight, Clock, Users, User } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { supabase } from "../lib/supabase"
 import { EditarPerfil } from "../auth/AuthScreens"
+
+interface GrupoItem { id: string; nome: string; dono_id: string }
 
 export interface RedeItem {
   id: string
@@ -15,6 +17,7 @@ export interface RedeItem {
 
 interface DashboardProps {
   onAbrirRede: (rede: RedeItem | null) => void
+  onAbrirGrupos: () => void
 }
 
 const STARS = Array.from({ length: 120 }, (_, i) => ({
@@ -41,9 +44,12 @@ function rowToRede(row: any): RedeItem {
   }
 }
 
-export function Dashboard({ onAbrirRede }: DashboardProps) {
+export function Dashboard({ onAbrirRede, onAbrirGrupos }: DashboardProps) {
   const { user, isEditor, role } = useAuth()
   const [redes, setRedes] = useState<RedeItem[]>([])
+  const [grupos, setGrupos] = useState<GrupoItem[]>([])
+  // contexto atual: "pessoal" = minhas redes sem grupo; ou o id de um grupo
+  const [contexto, setContexto] = useState<string>("pessoal")
   const [loading, setLoading] = useState(true)
   const [showNova, setShowNova] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
@@ -53,18 +59,30 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
   const nome = user?.user_metadata?.nome ?? user?.email ?? "usuário"
   const initial = nome[0]?.toUpperCase() ?? "?"
 
-  // ── Carrega as redes DA CONTA logada ao abrir o Dashboard ──────────────────
+  // ── Carrega os grupos que participo (para o seletor de contexto) ───────────
+  useEffect(() => {
+    let ativo = true
+    supabase.from("grupos").select("id, nome, dono_id").then(({ data }) => {
+      if (ativo) setGrupos(data ?? [])
+    })
+    return () => { ativo = false }
+  }, [user?.id])
+
+  // ── Carrega as redes do CONTEXTO atual (Pessoal ou um grupo) ───────────────
   useEffect(() => {
     let ativo = true
     async function carregar() {
       setLoading(true)
-      const { data, error } = await supabase
+      let q = supabase
         .from("redes")
-        .select("id, nome, descricao, criada_em, total_atores, total_relacoes")
+        .select("id, nome, descricao, criada_em, total_atores, total_relacoes, grupo_id")
         .order("criada_em", { ascending: false })
+      // Pessoal = redes sem grupo; senão, redes daquele grupo
+      q = contexto === "pessoal" ? q.is("grupo_id", null) : q.eq("grupo_id", contexto)
+      const { data, error } = await q
       if (!ativo) return
       if (error) {
-        setErro("Não foi possível carregar suas redes: " + error.message)
+        setErro("Não foi possível carregar as redes: " + error.message)
         setRedes([])
       } else {
         setErro("")
@@ -74,13 +92,13 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
     }
     carregar()
     return () => { ativo = false }
-  }, [user?.id])
+  }, [user?.id, contexto])
 
   async function handleLogout() {
     await supabase.auth.signOut()
   }
 
-  // ── Cria a rede NO BANCO antes de abrir ────────────────────────────────────
+  // ── Cria a rede NO BANCO antes de abrir (no contexto atual) ─────────────────
   async function handleCriarRede(nomeRede: string, descricaoRede: string) {
     if (!user) { setErro("Você precisa estar logado."); return }
     const novaId = "rede-" + Date.now()
@@ -88,7 +106,8 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
       .from("redes")
       .insert({
         id: novaId,
-        user_id: user.id,          // <- amarra a rede à conta logada
+        user_id: user.id,          // <- quem criou
+        grupo_id: contexto === "pessoal" ? null : contexto, // <- pessoal ou do grupo
         nome: nomeRede,
         descricao: descricaoRede,
         dados: { atores: [], relacoes: [], constelacoes: [] }, // começa vazia
@@ -142,10 +161,10 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
               <polygon points="6.5,1 12,10 1,10" fill="#AEE4FF" opacity="0.9" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 20, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
-          ORBITAL✧
+          <span style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 18, fontWeight: 800, color: "#cee0ff", letterSpacing: "0.08em" }}>
+            DIVAS POP
           </span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0", letterSpacing: "0.2em", marginTop: 2 }}>
             MINHAS REDES
           </span>
         </div>
@@ -155,6 +174,14 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0" }}>
             {role}
           </span>
+          <button onClick={onAbrirGrupos}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
+            style={{ borderColor: "rgba(106,156,253,0.2)", background: "rgba(106,156,253,0.06)", color: "#9dc8f5" }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(106,156,253,0.4)")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(106,156,253,0.2)")}>
+            <Users size={13} />
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>Grupos</span>
+          </button>
           <button onClick={() => setShowProfile(true)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all"
             style={{ borderColor: "rgba(106,156,253,0.2)", background: "rgba(106,156,253,0.06)" }}
@@ -202,6 +229,32 @@ export function Dashboard({ onAbrirRede }: DashboardProps) {
               {erro}
             </p>
           )}
+        </div>
+
+        {/* Seletor de contexto: Pessoal + cada grupo */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button onClick={() => setContexto("pessoal")}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border transition-all"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+              borderColor: contexto === "pessoal" ? "#6A9CFD88" : "rgba(106,156,253,0.18)",
+              background: contexto === "pessoal" ? "rgba(106,156,253,0.12)" : "transparent",
+              color: contexto === "pessoal" ? "#cee0ff" : "#5a7ab0",
+            }}>
+            <User size={12} /> Pessoal
+          </button>
+          {grupos.map(g => (
+            <button key={g.id} onClick={() => setContexto(g.id)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border transition-all"
+              style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                borderColor: contexto === g.id ? "#6A9CFD88" : "rgba(106,156,253,0.18)",
+                background: contexto === g.id ? "rgba(106,156,253,0.12)" : "transparent",
+                color: contexto === g.id ? "#cee0ff" : "#5a7ab0",
+              }}>
+              <Users size={12} /> {g.nome}
+            </button>
+          ))}
         </div>
 
         {/* Create button (Editor only) or read-only notice */}
