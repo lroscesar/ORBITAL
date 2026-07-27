@@ -6,6 +6,8 @@ import { useAuth } from "../auth/AuthContext"
 import { EditarPerfil } from "../auth/AuthScreens"
 import { Dashboard, type RedeItem } from "./Dashboard"
 import { supabase } from "../lib/supabase" // mesmo cliente usado no Dashboard
+import { Grupos } from "./Grupos"
+
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
