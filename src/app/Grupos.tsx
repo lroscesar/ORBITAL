@@ -15,6 +15,8 @@ interface Membro {
   user_id: string
   papel: string
   entrou_em: string
+  nome: string | null
+  email: string | null
 }
 interface Convite {
   id: string
@@ -70,8 +72,12 @@ export function Grupos({ onVoltar }: GruposProps) {
       .select("*")
       .single()
     if (error) { setErro("Erro ao criar grupo: " + error.message); return }
-    // entra como membro (papel dono)
-    await supabase.from("grupo_membros").insert({ grupo_id: data.id, user_id: user.id, papel: "dono" })
+    // entra como membro (papel dono) — guarda meu nome/e-mail pra exibir na lista
+    const meuNome = user.user_metadata?.nome ?? user.email ?? null
+    await supabase.from("grupo_membros").insert({
+      grupo_id: data.id, user_id: user.id, papel: "dono",
+      nome: meuNome, email: user.email ?? null,
+    })
     setShowNovo(false)
     carregar()
   }
@@ -79,8 +85,13 @@ export function Grupos({ onVoltar }: GruposProps) {
   // ── Aceitar convite: marca aceito + me insere como membro ──────────────────
   async function aceitarConvite(cv: Convite) {
     if (!user) return
+    // guarda meu nome/e-mail junto pra aparecer na lista de membros
+    const meuNome = user.user_metadata?.nome ?? user.email ?? null
     const ins = await supabase.from("grupo_membros")
-      .insert({ grupo_id: cv.grupo_id, user_id: user.id, papel: cv.papel })
+      .insert({
+        grupo_id: cv.grupo_id, user_id: user.id, papel: cv.papel,
+        nome: meuNome, email: user.email ?? null,
+      })
     if (ins.error && !ins.error.message.includes("duplicate")) {
       setErro("Erro ao entrar no grupo: " + ins.error.message); return
     }
@@ -372,7 +383,7 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
                   {m.papel[0]?.toUpperCase()}
                 </div>
                 <span style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff" }}>
-                  {m.user_id === user?.id ? "Você" : "Membro"}
+                  {m.user_id === user?.id ? "Você" : (m.nome || m.email || "Membro")}
                 </span>
                 <span style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginLeft: "auto" }}>
                   {m.papel}
