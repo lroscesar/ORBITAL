@@ -219,6 +219,149 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   const [showLegend, setShowLegend] = useState(true)
 
   const svgRef = useRef<SVGSVGElement>(null)
+ 
+// ══════════════ TEMPO REAL (colaboração) ══════════════
+  // Identidade desta sessão: id único + cor aleatória + nome exibido
+  const eu = useRef({
+    id: Math.random().toString(36).slice(2),
+    cor: `hsl(${Math.floor(Math.random() * 360)}, 85%, 62%)`, // cor aleatória por sessão
+    nome: user?.user_metadata?.nome ?? user?.email ?? "Anônimo",
+  })
+  // Cursores das OUTRAS pessoas online: { sessionId: {x,y,cor,nome} }
+  const [cursores, setCursores] = useState<Record<string, { x: number; y: number; cor: string; nome: string }>>({})
+  const canalRef = useRef<any>(null)         // canal Realtime do Supabase
+  const aplicandoRemoto = useRef(false)      // eco-guard: evita reenviar o que recebi
+  const ultimoEnvioCursor = useRef(0)        // throttle do cursor (ms)
+
+  // 🔑 PAPÉIS DE GRUPO: descobre meu papel no grupo desta rede (se for de grupo)
+  //   null enquanto carrega; "pessoal" quando a rede não é de grupo.
+  const [papelNoGrupo, setPapelNoGrupo] = useState<string | null>(null)
+
+  useEffect(() => {
+    let ativo = true
+    if (!rede.grupoId) {           // rede pessoal → não depende de grupo
+      setPapelNoGrupo("pessoal")
+      return
+    }
+    setPapelNoGrupo(null)
+    supabase
+      .from("grupo_membros")
+      .select("papel")
+      .eq("grupo_id", rede.grupoId)
+      .eq("user_id", user?.id ?? "")
+      .single()
+      .then(({ data }) => { if (ativo) setPapelNoGrupo(data?.papel ?? "leitor") })
+    return () => { ativo = false }
+  }, [rede.grupoId, user?.id])
+
+  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda".
+  //   - Rede pessoal: usa o isEditor do login.
+  //   - Rede de grupo: só edita se for dono ou editor NAQUELE grupo.
+  const podeEditar = rede.grupoId
+    ? (papelNoGrupo === "dono" || papelNoGrupo === "editor")
+    : isEditor
+
+  // 🔑 CORREÇÃO 2: carrega os dados da rede do Supabase (vazio se for rede nova)
+  useEffect(() => {
+    let ativo = true
+    setLoaded(false)
+    supabase
+      .from("redes")
+      .select("dados")
+      .eq("id", rede.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!ativo) return
+        const d = (!error && data?.dados) ? data.dados : {}
+        setAtores(d.atores ?? [])
+        setRelacoes(d.relacoes ?? [])
+        setConstelacoes(d.constelacoes ?? [])
+        setLoaded(true)
+      })
+    return () => { ativo = false }
+  }, [rede.id])
+
+  // 🔑 CORREÇÃO 3: autosave no Supabase (só quem pode editar, 800ms após a mudança)
+  useEffect(() => {
+    if (!loaded || !podeEditar) return
+    const t = setTimeout(() => {
+      supabase
+        .from("redes")
+        .update({
+          dados: { atores, relacoes, constelacoes },
+          total_atores: atores.length,
+          total_relacoes: relacoes.length,
+        })
+        .eq("id", rede.id)
+        .then(() => {})
+    }, 800)
+    return () => clearTimeout(t)
+  }, [atores, relacoes, constelacoes, loaded, podeEditar, rede.id])
+
+  // ═══ TEMPO REAL: assina o canal da rede (cursores + edição ao vivo) ═══
+  useEffect(() => {
+    // um canal por rede; todos que abrem a mesma rede entram no mesmo canal
+    const canal = supabase.channel(`rede-${rede.id}`, {
+      config: { broadcast: { self: false } }, // não recebo meus próprios envios
+    })
+
+    // 1) CURSORES dos outros
+    canal.on("broadcast", { event: "cursor" }, ({ payload }) => {
+      setCursores(prev => ({ ...prev, [payload.id]: {
+        x: payload.x, y: payload.y, cor: payload.cor, nome: payload.nome,
+      }}))
+    })
+    // quando alguém sai, remove o cursor
+    canal.on("broadcast", { event: "saiu" }, ({ payload }) => {
+      setCursores(prev => { const c = { ...prev }; delete c[payload.id]; return c })
+    })
+
+    // 2) EDIÇÃO AO VIVO: recebo os dados que outro alterou e aplico na tela
+    canal.on("broadcast", { event: "dados" }, ({ payload }) => {
+      aplicandoRemoto.current = true            // marca: veio de fora (não reenviar)
+      if (payload.atores)      setAtores(payload.atores)
+      if (payload.relacoes)    setRelacoes(payload.relacoes)
+      if (payload.constelacoes) setConstelacoes(payload.constelacoes)
+      // libera o guard no próximo ciclo
+      setTimeout(() => { aplicandoRemoto.current = false }, 0)
+    })
+
+    canal.subscribe()
+    canalRef.current = canal
+
+    return () => {
+      canal.send({ type: "broadcast", event: "saiu", payload: { id: eu.current.id } })
+      supabase.removeChannel(canal)
+      canalRef.current = null
+    }
+  }, [rede.id])
+
+  // ═══ TEMPO REAL: transmite minhas alterações (só se eu puder editar) ═══
+  useEffect(() => {
+    if (!loaded || !podeEditar) return
+    if (aplicandoRemoto.current) return          // não reenvia o que acabei de receber
+    canalRef.current?.send({
+      type: "broadcast", event: "dados",
+      payload: { atores, relacoes, constelacoes },
+    })
+  }, [atores, relacoes, constelacoes, loaded, podeEditar])
+
+  const [tr, setTr] = useState({ x: 0, y: 0, scale: 1 })
+  const [dragging, setDragging] = useState(false)
+  const [draggingNode, setDraggingNode] = useState(false)
+  const dragRef = useRef({ sx: 0, sy: 0, tx: 0, ty: 0, moved: false })
+  const nodeDragRef = useRef<{ id: string; startMX: number; startMY: number; startNX: number; startNY: number; scale: number } | null>(null)
+  const nodeWasDragged = useRef(false)
+
+  const [showProfile, setShowProfile] = useState(false)
+  const [selected, setSelected] = useState<{ kind: "actor" | "relation"; id: string } | null>(null)
+  const [viewMode, setViewMode] = useState<"orbital" | "grafo">("orbital")
+  const [cascadeIds, setCascadeIds] = useState<Set<string>>(new Set())
+  const [showAddActor, setShowAddActor] = useState(false)
+  const [showAddRelation, setShowAddRelation] = useState(false)
+  const [showLegend, setShowLegend] = useState(true)
+
+  const svgRef = useRef<SVGSVGElement>(null)
 
   // Non-passive wheel for zoom
   useEffect(() => {
@@ -779,7 +922,7 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
       ) : canEdit ? (
         <form onSubmit={handleAdd} className="rounded-lg border p-3 space-y-3" style={{ borderColor: "rgba(255,184,208,0.2)", background: "rgba(255,184,208,0.04)" }}>
           <div style={{ fontFamily: mono, fontSize: 9, color: "#FFB8D0", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-            Novo ator interno · RF08
+            Novo ator interno
           </div>
 
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
@@ -1020,10 +1163,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             color: `${TIPO_COLOR[relacao.tipo]}cc`,
             fontFamily: mono,
           }}>
-            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs (RF07/RD02)."}
-            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão (RF04)."}
-            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória (RF17). ◆ indica o custo de recusa."}
-            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa (RF06)."}
+            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs."}
+            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão."}
+            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória. ◆ indica o custo de recusa."}
+            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa."}
           </div>
         </>
       )}
@@ -1155,11 +1298,11 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
   }
 
   return (
-    <ModalShell title="Cadastrar Ator · RF01/RF02" onClose={onClose}>
+    <ModalShell title="Cadastrar Ator" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Nome do Ator">
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
-            placeholder="ex: Billie Eilish"
+            placeholder="ex: Banco Central"
             className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
             style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>
@@ -1179,7 +1322,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           </div>
         </MField>
 
-        <MField label={`Peso Hierárquico · RF10/RF16: ${peso}/10`}>
+        <MField label={`Peso Hierárquico: ${peso}/10`}>
           <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
             className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
           <div className="flex justify-between mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0" }}>
@@ -1189,8 +1332,8 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
 
         <div className="flex gap-6">
           {[
-            { label: "★ PPO · RF09", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
-            { label: "Caixa-preta · RF08", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
+            { label: "★ PPO", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
+            { label: "Caixa-preta", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
           ].map(({ label, icon: Icon, val, set, color }) => (
             <label key={label} className="flex items-center gap-2 cursor-pointer" onClick={() => set(!val)}>
               <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
@@ -1241,7 +1384,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   }
 
   return (
-    <ModalShell title="Registrar Relação · RF03–RF06" onClose={onClose}>
+    <ModalShell title="Registrar Relação" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Tipo de Relação">
           <div className="grid grid-cols-2 gap-2">
@@ -1260,7 +1403,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Promessa" && (
           <div className="p-3 rounded-lg" style={{ background: "rgba(106,156,253,0.07)", borderLeft: "2px solid #6A9CFD66", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#6A9CFDbb", lineHeight: 1.6 }}>
-            RF07: A Promessa só pode partir do próprio promitente — nunca do agente que impôs (RD02).
+          A Promessa só pode partir do próprio promitente — nunca do agente que impôs (RD02).
           </div>
         )}
 
@@ -1278,10 +1421,10 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label={`Custo de Recusa · RF10: ${custo}/10`}>
+            <MField label={`Custo de Recusa: ${custo}/10`}>
               <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
             </MField>
-            <MField label={`Distância Regulatória · RF17: ${dist}/5`}>
+            <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
             </MField>
           </>
