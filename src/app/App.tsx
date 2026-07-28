@@ -467,7 +467,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
               return (
                 <circle key={`inner-orb-${child.id}`}
                   cx={parent.x} cy={parent.y} r={dist}
-                  fill="none" stroke="rgba(255,184,208,0.15)"
+                  fill="none" stroke="rgba(255, 184, 208, 0.4)"
                   strokeWidth={1} strokeDasharray="2 5" />
               )
             })}
