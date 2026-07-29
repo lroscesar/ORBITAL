@@ -126,11 +126,7 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
     setErr(""); setOk("")
     if (!nome.trim()) { setErr("Nome é obrigatório."); return }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: senha,
-      options: { data: { nome, role: papel } },
-    })
+
     setLoading(false)
     if (error) { setErr(error.message); return }
     setOk("Conta criada! Verifique seu e-mail para confirmar o cadastro.")
