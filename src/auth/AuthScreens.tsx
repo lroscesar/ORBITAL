@@ -117,7 +117,6 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
   const [nome,  setNome]  = useState("")
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
-  const [papel, setPapel] = useState<"Editor" | "Leitor">("Editor")
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState("")
   const [ok,  setOk]  = useState("")
@@ -154,23 +153,7 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
         <Field label="Senha">
           <Input type="password" value={senha} onChange={setSenha} placeholder="Mínimo 6 caracteres" />
         </Field>
-        <Field label="Papel">
-          <div className="flex gap-2">
-            {(["Editor", "Leitor"] as const).map(p => (
-              <button key={p} type="button" onClick={() => setPapel(p)}
-                className="flex-1 py-2 rounded-lg text-xs transition-all"
-                style={{ fontFamily: mono,
-                  background: papel === p ? `${PRI}22` : "transparent",
-                  border: `1px solid ${papel === p ? PRI : BORD}`,
-                  color: papel === p ? PRI : MUT }}>
-                {p === "Editor" ? "✎ Editor" : "◎ Leitor"}
-              </button>
-            ))}
-          </div>
-          <p style={{ fontFamily: mono, fontSize: 9, color: MUT, marginTop: 4 }}>
-            Editor: cria e edita · Leitor: somente visualização
-          </p>
-        </Field>
+      
 
         <ErrMsg msg={err} />
         <OkMsg  msg={ok} />
@@ -373,12 +356,6 @@ export function EditarPerfil({ user, onClose }: { user: User; onClose: () => voi
           </button>
         </div>
 
-        {/* Papel atual */}
-        <div className="px-3 py-2 rounded-lg" style={{ background: `${PRI}12`, border: `1px solid ${PRI}22` }}>
-          <span style={{ fontFamily: mono, fontSize: 10, color: PRI }}>
-            Papel: {meta.role ?? "Leitor"}
-          </span>
-        </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
           <Field label="Nome">
