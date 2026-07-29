@@ -129,8 +129,7 @@ function AppRouter() {
 
 // ── Main app (authenticated) ──────────────────────────────────────────────────
 
-function Orbital{ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
-  // 🔑 CORREÇÃO 1: pega user/isEditor/role do contexto de auth
+function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) { 
   const { user, isEditor, role } = useAuth()
 
   const [atores, setAtores] = useState<Ator[]>([])
