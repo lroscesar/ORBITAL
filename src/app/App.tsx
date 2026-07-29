@@ -23,6 +23,7 @@ interface Ator {
   x: number
   y: number
   parent_id?: string
+  descricao?: string   // descrição opcional (ex: "Banco Central promete X")
 }
 
 interface Relacao {
@@ -32,6 +33,7 @@ interface Relacao {
   ator_destino_id: string
   custo_recusa?: number
   distancia_regulatoria?: number
+  descricao?: string   // descrição opcional (ex: "impõe Y ao banco")
 }
 
 interface Constelacao {
@@ -543,7 +545,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
               return (
                 <circle key={`inner-orb-${child.id}`}
                   cx={parent.x} cy={parent.y} r={dist}
-                  fill="none" stroke="rgba(255,184,208,0.15)"
+                  fill="none" stroke="rgba(255, 184, 208, 0.55)"
                   strokeWidth={1} strokeDasharray="2 5" />
               )
             })}
@@ -1034,6 +1036,12 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             <PField label="Classe (TAR)">
               <span style={{ fontFamily: mono, fontSize: 11, color: "#9dc8f5" }}>{ator.classe}</span>
             </PField>
+
+            {ator.descricao && (
+              <PField label="Descrição">
+                <p style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{ator.descricao}</p>
+              </PField>
+            )}
           </div>
 
           <div className="mt-auto pt-4 border-t" style={{ borderColor: "rgba(106,156,253,0.12)" }}>
@@ -1084,6 +1092,12 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                 <span style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff" }}>{actorMap[relacao.ator_destino_id]?.nome ?? relacao.ator_destino_id}</span>
               </div>
             </PField>
+
+            {relacao.descricao && (
+              <PField label="Descrição">
+                <p style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{relacao.descricao}</p>
+              </PField>
+            )}
 
             {relacao.custo_recusa !== undefined && (
               <PField label="Custo de Recusa">
@@ -1146,6 +1160,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                   className="flex-1" />
                 <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingAtor.peso_hierarquico}</span>
               </div>
+              <textarea value={editingAtor.descricao ?? ""} onChange={e => setEditingAtor(p => p && ({ ...p, descricao: e.target.value }))}
+                rows={2} placeholder='Descrição (opcional)'
+                className="w-full px-2.5 py-1.5 rounded-lg text-xs border outline-none resize-none"
+                style={{ fontFamily: mono, background: "#0a1535", borderColor: "rgba(106,156,253,0.25)", color: "#cee0ff" }} />
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 py-1.5 rounded-lg text-xs font-semibold" style={{ fontFamily: mono, background: "#6A9CFD", color: "#020c1e" }}>Salvar</button>
                 <button type="button" onClick={() => setEditingAtor(null)} className="flex-1 py-1.5 rounded-lg text-xs border" style={{ fontFamily: mono, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0" }}>Cancelar</button>
@@ -1170,6 +1188,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                   <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingRelacao.custo_recusa ?? 5}</span>
                 </div>
               )}
+              <textarea value={editingRelacao.descricao ?? ""} onChange={e => setEditingRelacao(p => p && ({ ...p, descricao: e.target.value }))}
+                rows={2} placeholder='Descrição (opcional)'
+                className="w-full px-2.5 py-1.5 rounded-lg text-xs border outline-none resize-none"
+                style={{ fontFamily: mono, background: "#0a1535", borderColor: "rgba(106,156,253,0.25)", color: "#cee0ff" }} />
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 py-1.5 rounded-lg text-xs font-semibold" style={{ fontFamily: mono, background: "#6A9CFD", color: "#020c1e" }}>Salvar</button>
                 <button type="button" onClick={() => setEditingRelacao(null)} className="flex-1 py-1.5 rounded-lg text-xs border" style={{ fontFamily: mono, borderColor: "rgba(106,156,253,0.2)", color: "#5a7ab0" }}>Cancelar</button>
@@ -1232,6 +1254,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
   const [peso, setPeso] = useState(5)
   const [ppo, setPpo] = useState(false)
   const [caixaPreta, setCaixaPreta] = useState(false)
+  const [descricao, setDescricao] = useState("")   // descrição opcional
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -1245,6 +1268,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
       eh_caixa_preta: caixaPreta,
       x: 300 + Math.random() * 600,
       y: 200 + Math.random() * 450,
+      descricao: descricao.trim() || undefined,
     })
   }
 
@@ -1255,6 +1279,13 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
             placeholder="ex: Billie Eilish"
             className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
+            style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
+        </MField>
+
+        <MField label="Descrição (opcional)">
+          <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={2}
+            placeholder='ex: "Banco Central promete X"'
+            className="w-full px-3 py-2 rounded-lg text-sm border outline-none resize-none"
             style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>
 
@@ -1313,6 +1344,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   const [destinoId, setDestinoId] = useState(atores[1]?.id ?? "")
   const [custo, setCusto] = useState(5)
   const [dist, setDist] = useState(3)
+  const [descricao, setDescricao] = useState("")   // descrição opcional
   const [error, setError] = useState("")
 
   const submit = (e: React.FormEvent) => {
@@ -1324,6 +1356,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
       tipo,
       ator_origem_id: origemId,
       ator_destino_id: destinoId,
+      descricao: descricao.trim() || undefined,
       ...(tipo === "Obrigação" ? { custo_recusa: custo, distancia_regulatoria: dist } : {}),
     })
   }
@@ -1368,6 +1401,13 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
           <select value={destinoId} onChange={e => setDestinoId(e.target.value)} style={selStyle}>
             {atores.map(a => <option key={a.id} value={a.id}>{a.nome} ({a.classe})</option>)}
           </select>
+        </MField>
+
+        <MField label="Descrição (opcional)">
+          <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={2}
+            placeholder='ex: "impõe Y ao banco"'
+            className="w-full px-3 py-2 rounded-lg text-sm border outline-none resize-none"
+            style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>
 
         {tipo === "Obrigação" && (
