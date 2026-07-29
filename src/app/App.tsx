@@ -129,7 +129,7 @@ function AppRouter() {
 
 // ── Main app (authenticated) ──────────────────────────────────────────────────
 
-function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
+function Orbital{ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   // 🔑 CORREÇÃO 1: pega user/isEditor/role do contexto de auth
   const { user, isEditor, role } = useAuth()
 
@@ -138,89 +138,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   const [constelacoes, setConstelacoes] = useState<Constelacao[]>([])
   const [loaded, setLoaded] = useState(false)
 
-  // 🔑 PAPÉIS DE GRUPO: descobre meu papel no grupo desta rede (se for de grupo)
-  //   null enquanto carrega; "pessoal" quando a rede não é de grupo.
-  const [papelNoGrupo, setPapelNoGrupo] = useState<string | null>(null)
-
-  useEffect(() => {
-    let ativo = true
-    if (!rede.grupoId) {           // rede pessoal → não depende de grupo
-      setPapelNoGrupo("pessoal")
-      return
-    }
-    setPapelNoGrupo(null)
-    supabase
-      .from("grupo_membros")
-      .select("papel")
-      .eq("grupo_id", rede.grupoId)
-      .eq("user_id", user?.id ?? "")
-      .single()
-      .then(({ data }) => { if (ativo) setPapelNoGrupo(data?.papel ?? "leitor") })
-    return () => { ativo = false }
-  }, [rede.grupoId, user?.id])
-
-  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda".
-  //   - Rede pessoal: usa o isEditor do login.
-  //   - Rede de grupo: só edita se for dono ou editor NAQUELE grupo.
-  const podeEditar = rede.grupoId
-    ? (papelNoGrupo === "dono" || papelNoGrupo === "editor")
-    : isEditor
-
-  // 🔑 CORREÇÃO 2: carrega os dados da rede do Supabase (vazio se for rede nova)
-  useEffect(() => {
-    let ativo = true
-    setLoaded(false)
-    supabase
-      .from("redes")
-      .select("dados")
-      .eq("id", rede.id)
-      .single()
-      .then(({ data, error }) => {
-        if (!ativo) return
-        const d = (!error && data?.dados) ? data.dados : {}
-        setAtores(d.atores ?? [])
-        setRelacoes(d.relacoes ?? [])
-        setConstelacoes(d.constelacoes ?? [])
-        setLoaded(true)
-      })
-    return () => { ativo = false }
-  }, [rede.id])
-
-  // 🔑 CORREÇÃO 3: autosave no Supabase (só quem pode editar, 800ms após a mudança)
-  useEffect(() => {
-    if (!loaded || !podeEditar) return
-    const t = setTimeout(() => {
-      supabase
-        .from("redes")
-        .update({
-          dados: { atores, relacoes, constelacoes },
-          total_atores: atores.length,
-          total_relacoes: relacoes.length,
-        })
-        .eq("id", rede.id)
-        .then(() => {})
-    }, 800)
-    return () => clearTimeout(t)
-  }, [atores, relacoes, constelacoes, loaded, podeEditar, rede.id])
-
-  const [tr, setTr] = useState({ x: 0, y: 0, scale: 1 })
-  const [dragging, setDragging] = useState(false)
-  const [draggingNode, setDraggingNode] = useState(false)
-  const dragRef = useRef({ sx: 0, sy: 0, tx: 0, ty: 0, moved: false })
-  const nodeDragRef = useRef<{ id: string; startMX: number; startMY: number; startNX: number; startNY: number; scale: number } | null>(null)
-  const nodeWasDragged = useRef(false)
-
-  const [showProfile, setShowProfile] = useState(false)
-  const [selected, setSelected] = useState<{ kind: "actor" | "relation"; id: string } | null>(null)
-  const [viewMode, setViewMode] = useState<"orbital" | "grafo">("orbital")
-  const [cascadeIds, setCascadeIds] = useState<Set<string>>(new Set())
-  const [showAddActor, setShowAddActor] = useState(false)
-  const [showAddRelation, setShowAddRelation] = useState(false)
-  const [showLegend, setShowLegend] = useState(true)
-
-  const svgRef = useRef<SVGSVGElement>(null)
- 
-// ══════════════ TEMPO REAL (colaboração) ══════════════
+  // ══════════════ TEMPO REAL (colaboração) ══════════════
   // Identidade desta sessão: id único + cor aleatória + nome exibido
   const eu = useRef({
     id: Math.random().toString(36).slice(2),
@@ -389,6 +307,22 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
     dragRef.current = { sx: e.clientX, sy: e.clientY, tx: tr.x, ty: tr.y, moved: false }
   }
   const onMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    // ═══ TEMPO REAL: transmite a posição do meu cursor (em coords do "mundo") ═══
+    const agora = Date.now()
+    if (canalRef.current && agora - ultimoEnvioCursor.current > 40) {
+      ultimoEnvioCursor.current = agora
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (rect) {
+        // desfaz o pan/zoom para a posição casar na tela do outro
+        const wx = (e.clientX - rect.left - tr.x) / tr.scale
+        const wy = (e.clientY - rect.top  - tr.y) / tr.scale
+        canalRef.current.send({
+          type: "broadcast", event: "cursor",
+          payload: { id: eu.current.id, cor: eu.current.cor, nome: eu.current.nome, x: wx, y: wy },
+        })
+      }
+    }
+
     // Node drag takes priority
     if (nodeDragRef.current) {
       const nd = nodeDragRef.current
@@ -481,7 +415,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
           </div>
           <div>
             <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 600, color: "#cee0ff", letterSpacing: "0.18em" }}>{rede.nome}</div>
-            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL</div>
+            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", letterSpacing: "0.1em" }}>ORBITAL ✧</div>
           </div>
         </div>
 
@@ -610,7 +544,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
               return (
                 <circle key={`inner-orb-${child.id}`}
                   cx={parent.x} cy={parent.y} r={dist}
-                  fill="none" stroke="rgba(255, 184, 208, 0.4)"
+                  fill="none" stroke="rgba(255,184,208,0.15)"
                   strokeWidth={1} strokeDasharray="2 5" />
               )
             })}
@@ -740,6 +674,24 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
                 </g>
               )
             })}
+
+            {/* ═══ TEMPO REAL: cursores das outras pessoas (caixinha colorida + nome) ═══ */}
+            {Object.entries(cursores).map(([sid, c]) => (
+              <g key={`cur-${sid}`} transform={`translate(${c.x},${c.y})`} style={{ pointerEvents: "none" }}>
+                {/* setinha do cursor */}
+                <path d="M0,0 L0,16 L4,12 L7,18 L10,17 L7,11 L13,11 Z"
+                  fill={c.cor} stroke="#020c1e" strokeWidth={0.6} />
+                {/* caixinha com o nome */}
+                <g transform="translate(14, 10)">
+                  <rect x={0} y={0} rx={4} ry={4}
+                    width={Math.max(28, c.nome.length * 7 + 12)} height={18}
+                    fill={c.cor} />
+                  <text x={6} y={13} style={{ fontFamily: mono, fontSize: 10, fill: "#08122b", fontWeight: 700 }}>
+                    {c.nome}
+                  </text>
+                </g>
+              </g>
+            ))}
           </g>
         </svg>
 
@@ -922,7 +874,7 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
       ) : canEdit ? (
         <form onSubmit={handleAdd} className="rounded-lg border p-3 space-y-3" style={{ borderColor: "rgba(255,184,208,0.2)", background: "rgba(255,184,208,0.04)" }}>
           <div style={{ fontFamily: mono, fontSize: 9, color: "#FFB8D0", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-            Novo ator interno
+            Novo ator interno · RF08
           </div>
 
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
@@ -1163,10 +1115,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             color: `${TIPO_COLOR[relacao.tipo]}cc`,
             fontFamily: mono,
           }}>
-            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs."}
-            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão."}
-            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória. ◆ indica o custo de recusa."}
-            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa."}
+            {relacao.tipo === "Promessa"  && "Burgess: a promessa é sempre e unicamente do promitente. A origem nunca pode ser o agente que impôs (RF07/RD02)."}
+            {relacao.tipo === "Imposição" && "Burgess: a imposição vem de fora. O agente decide apenas sua resposta, nunca a origem da pressão (RF04)."}
+            {relacao.tipo === "Obrigação" && "Imposição + custo de recusa. O raio orbital encoda a distância regulatória (RF17). ◆ indica o custo de recusa."}
+            {relacao.tipo === "Delegação" && "Transferência de agência a um ator (ex: equipe, plataforma). Visualmente distinta da Promessa (RF06)."}
           </div>
         </>
       )}
@@ -1298,11 +1250,11 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
   }
 
   return (
-    <ModalShell title="Cadastrar Ator" onClose={onClose}>
+    <ModalShell title="Cadastrar Ator · RF01/RF02" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Nome do Ator">
           <input value={nome} onChange={e => setNome(e.target.value)} autoFocus
-            placeholder="ex: Banco Central"
+            placeholder="ex: Billie Eilish"
             className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
             style={{ fontFamily: "'JetBrains Mono', monospace", background: "rgba(106,156,253,0.05)", borderColor: "rgba(106,156,253,0.2)", color: "#cee0ff" }} />
         </MField>
@@ -1322,7 +1274,7 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           </div>
         </MField>
 
-        <MField label={`Peso Hierárquico: ${peso}/10`}>
+        <MField label={`Peso Hierárquico · RF10/RF16: ${peso}/10`}>
           <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
             className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
           <div className="flex justify-between mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0" }}>
@@ -1332,8 +1284,8 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
 
         <div className="flex gap-6">
           {[
-            { label: "★ PPO", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
-            { label: "Caixa-preta", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
+            { label: "★ PPO · RF09", icon: null, val: ppo, set: setPpo, color: "#FFD700" },
+            { label: "Caixa-preta · RF08", icon: EyeOff, val: caixaPreta, set: setCaixaPreta, color: "#6A9CFD" },
           ].map(({ label, icon: Icon, val, set, color }) => (
             <label key={label} className="flex items-center gap-2 cursor-pointer" onClick={() => set(!val)}>
               <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
@@ -1384,7 +1336,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   }
 
   return (
-    <ModalShell title="Registrar Relação" onClose={onClose}>
+    <ModalShell title="Registrar Relação · RF03–RF06" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <MField label="Tipo de Relação">
           <div className="grid grid-cols-2 gap-2">
@@ -1403,7 +1355,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Promessa" && (
           <div className="p-3 rounded-lg" style={{ background: "rgba(106,156,253,0.07)", borderLeft: "2px solid #6A9CFD66", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#6A9CFDbb", lineHeight: 1.6 }}>
-          A Promessa só pode partir do próprio promitente — nunca do agente que impôs (RD02).
+            RF07: A Promessa só pode partir do próprio promitente — nunca do agente que impôs (RD02).
           </div>
         )}
 
@@ -1421,10 +1373,10 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label={`Custo de Recusa: ${custo}/10`}>
+            <MField label={`Custo de Recusa · RF10: ${custo}/10`}>
               <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
             </MField>
-            <MField label={`Distância Regulatória: ${dist}/5`}>
+            <MField label={`Distância Regulatória · RF17: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
             </MField>
           </>
