@@ -12,6 +12,8 @@ const MUT  = "#5a7ab0"
 const BORD = "rgba(106,156,253,0.18)"
 const FG   = "#cee0ff"
 
+// ALTERAÇÃO: configuração do fluxo de confirmação de e-mail no cadastro/login
+
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -28,7 +30,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span style={{ fontFamily: mono, fontSize: 13, color: "#AEE4FF" }}>✦</span>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>ORBITAL</div>
+            <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 700, color: FG, letterSpacing: "0.18em" }}>DIVAS POP</div>
             <div style={{ fontFamily: mono, fontSize: 9, color: MUT, letterSpacing: "0.1em" }}>TAR · TEORIA DA PROMESSA</div>
           </div>
         </div>
@@ -117,18 +119,32 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
   const [nome,  setNome]  = useState("")
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
+  const [papel, setPapel] = useState<"Editor" | "Leitor">("Editor")
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState("")
   const [ok,  setOk]  = useState("")
 
+  // ALTERAÇÃO: cadastro agora prepara o fluxo para confirmação por e-mail
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr(""); setOk("")
     if (!nome.trim()) { setErr("Nome é obrigatório."); return }
     setLoading(true)
-
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: {
+        data: { nome, role: papel },
+        emailRedirectTo: window.location.origin,
+      },
+    })
     setLoading(false)
     if (error) { setErr(error.message); return }
+    // ALTERAÇÃO: se o e-mail ainda não foi confirmado, mostra a mensagem de verificação
+    if (data.user && !data.user.email_confirmed_at) {
+      setOk("Conta criada! Verifique seu e-mail para confirmar o cadastro.")
+      return
+    }
     setOk("Conta criada! Verifique seu e-mail para confirmar o cadastro.")
   }
 
@@ -136,7 +152,7 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
     <Shell>
       <div>
         <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Criar conta</h2>
-        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Cadastro de usuário</p>
+        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF21 — Cadastro de usuário</p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -149,7 +165,23 @@ export function Cadastro({ onGoLogin }: { onGoLogin: () => void }) {
         <Field label="Senha">
           <Input type="password" value={senha} onChange={setSenha} placeholder="Mínimo 6 caracteres" />
         </Field>
-      
+        <Field label="Papel">
+          <div className="flex gap-2">
+            {(["Editor", "Leitor"] as const).map(p => (
+              <button key={p} type="button" onClick={() => setPapel(p)}
+                className="flex-1 py-2 rounded-lg text-xs transition-all"
+                style={{ fontFamily: mono,
+                  background: papel === p ? `${PRI}22` : "transparent",
+                  border: `1px solid ${papel === p ? PRI : BORD}`,
+                  color: papel === p ? PRI : MUT }}>
+                {p === "Editor" ? "✎ Editor" : "◎ Leitor"}
+              </button>
+            ))}
+          </div>
+          <p style={{ fontFamily: mono, fontSize: 9, color: MUT, marginTop: 4 }}>
+            Editor: cria e edita · Leitor: somente visualização
+          </p>
+        </Field>
 
         <ErrMsg msg={err} />
         <OkMsg  msg={ok} />
@@ -172,13 +204,27 @@ export function Login({ onGoRegister, onGoRecover, onTestAccess }: { onGoRegiste
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState("")
 
+  // ALTERAÇÃO: login passa a tratar o caso de e-mail ainda não confirmado
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr("")
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
     setLoading(false)
-    if (error) setErr(error.message)
+    if (error) {
+      // ALTERAÇÃO: mensagem específica quando o e-mail não foi confirmado
+      if (error.message.toLowerCase().includes("confirm")) {
+        setErr("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.")
+      } else {
+        setErr(error.message)
+      }
+      return
+    }
+    // ALTERAÇÃO: se o usuário ainda não confirmou o e-mail, encerra a sessão
+    if (data.user && !data.user.email_confirmed_at) {
+      await supabase.auth.signOut()
+      setErr("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.")
+    }
   }
 
   return (
@@ -186,7 +232,7 @@ export function Login({ onGoRegister, onGoRecover, onTestAccess }: { onGoRegiste
       <Shell>
         <div>
           <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Entrar</h2>
-          <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Login de usuário</p>
+          <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF22 — Login de usuário</p>
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
@@ -255,7 +301,7 @@ export function RecuperarSenha({ onGoLogin }: { onGoLogin: () => void }) {
     <Shell>
       <div>
         <h2 style={{ fontFamily: exo, fontSize: 20, fontWeight: 700, color: FG }}>Recuperar senha</h2>
-        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>Recuperação via e-mail</p>
+        <p style={{ fontFamily: mono, fontSize: 10, color: MUT, marginTop: 2 }}>RF23 — Reset via e-mail</p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -352,6 +398,12 @@ export function EditarPerfil({ user, onClose }: { user: User; onClose: () => voi
           </button>
         </div>
 
+        {/* Papel atual */}
+        <div className="px-3 py-2 rounded-lg" style={{ background: `${PRI}12`, border: `1px solid ${PRI}22` }}>
+          <span style={{ fontFamily: mono, fontSize: 10, color: PRI }}>
+            Papel: {meta.role ?? "Leitor"}
+          </span>
+        </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
           <Field label="Nome">
