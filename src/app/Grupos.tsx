@@ -17,6 +17,7 @@ interface Membro {
   entrou_em: string
   nome: string | null
   email: string | null
+  cor: string | null
 }
 interface Convite {
   id: string
@@ -72,11 +73,11 @@ export function Grupos({ onVoltar }: GruposProps) {
       .select("*")
       .single()
     if (error) { setErro("Erro ao criar grupo: " + error.message); return }
-    // entra como membro (papel dono) — guarda meu nome/e-mail pra exibir na lista
+    // entra como membro (papel dono) — guarda meu nome/e-mail/cor pra exibir na lista
     const meuNome = user.user_metadata?.nome ?? user.email ?? null
     await supabase.from("grupo_membros").insert({
       grupo_id: data.id, user_id: user.id, papel: "dono",
-      nome: meuNome, email: user.email ?? null,
+      nome: meuNome, email: user.email ?? null, cor: user.user_metadata?.cor ?? null,
     })
     setShowNovo(false)
     carregar()
@@ -85,12 +86,12 @@ export function Grupos({ onVoltar }: GruposProps) {
   // ── Aceitar convite: marca aceito + me insere como membro ──────────────────
   async function aceitarConvite(cv: Convite) {
     if (!user) return
-    // guarda meu nome/e-mail junto pra aparecer na lista de membros
+    // guarda meu nome/e-mail/cor junto pra aparecer na lista de membros
     const meuNome = user.user_metadata?.nome ?? user.email ?? null
     const ins = await supabase.from("grupo_membros")
       .insert({
         grupo_id: cv.grupo_id, user_id: user.id, papel: cv.papel,
-        nome: meuNome, email: user.email ?? null,
+        nome: meuNome, email: user.email ?? null, cor: user.user_metadata?.cor ?? null,
       })
     if (ins.error && !ins.error.message.includes("duplicate")) {
       setErro("Erro ao entrar no grupo: " + ins.error.message); return
@@ -252,14 +253,19 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
     setConvites(c.data ?? [])
     setEmailsAceitos((ac.data ?? []).map((x: any) => x.email))
 
-    // AUTOCORREÇÃO: se EU sou membro antigo sem nome/e-mail salvo, preencho agora
+    // AUTOSSINCRONIA: mantém meu nome/e-mail/cor no grupo sempre iguais ao perfil atual
+    // (cobre tanto membros antigos sem esses dados quanto mudanças feitas depois no perfil)
     if (user) {
       const eu = membrosData.find(mm => mm.user_id === user.id)
-      if (eu && !eu.email) {
-        const meuNome = user.user_metadata?.nome ?? user.email ?? null
+      const meuNome = user.user_metadata?.nome ?? user.email ?? null
+      const minhaCor = user.user_metadata?.cor ?? null
+      if (eu && (eu.nome !== meuNome || eu.email !== (user.email ?? null) || eu.cor !== minhaCor)) {
         await supabase.from("grupo_membros")
-          .update({ nome: meuNome, email: user.email ?? null })
+          .update({ nome: meuNome, email: user.email ?? null, cor: minhaCor })
           .eq("grupo_id", grupo.id).eq("user_id", user.id)
+        setMembros(prev => prev.map(mm =>
+          mm.user_id === user.id ? { ...mm, nome: meuNome, email: user.email ?? null, cor: minhaCor } : mm
+        ))
       }
     }
   }, [grupo.id, user])
@@ -396,7 +402,11 @@ function DetalheGrupo({ grupo, onVoltar }: { grupo: Grupo; onVoltar: () => void 
               <div key={m.user_id} className="flex items-center gap-3 px-4 py-2.5 rounded-lg border"
                 style={{ borderColor: "rgba(106,156,253,0.12)", background: "#071428" }}>
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                  style={{ background: "linear-gradient(135deg, #1d3a7a, #033495)", color: "#AEE4FF", fontFamily: mono }}>
+                  style={{
+                    background: m.cor ?? "linear-gradient(135deg, #1d3a7a, #033495)",
+                    color: m.cor ? "#061428" : "#AEE4FF",
+                    fontFamily: mono,
+                  }}>
                   {m.papel[0]?.toUpperCase()}
                 </div>
                 <span style={{ fontFamily: mono, fontSize: 11, color: "#cee0ff" }}>
