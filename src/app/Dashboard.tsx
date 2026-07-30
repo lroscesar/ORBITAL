@@ -190,7 +190,13 @@ export function Dashboard({ onAbrirRede, onAbrirGrupos }: DashboardProps) {
             onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(106,156,253,0.4)")}
             onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(106,156,253,0.2)")}>
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: "linear-gradient(135deg, #1d3a7a, #033495)", color: "#AEE4FF", fontFamily: "'JetBrains Mono', monospace" }}>
+              style={{
+                background: user?.user_metadata?.cor
+                  ? user.user_metadata.cor
+                  : "linear-gradient(135deg, #1d3a7a, #033495)",
+                color: user?.user_metadata?.cor ? "#061428" : "#AEE4FF",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>
               {initial}
             </div>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#cee0ff" }}>
@@ -402,7 +408,7 @@ export function Dashboard({ onAbrirRede, onAbrirGrupos }: DashboardProps) {
       )}
 
       {/* Modal: Editar Perfil */}
-      {showProfile && <EditarPerfil onClose={() => setShowProfile(false)} />}
+      {showProfile && user && <EditarPerfil user={user} onClose={() => setShowProfile(false)} />}
     </div>
   )
 }

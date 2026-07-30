@@ -14,6 +14,13 @@ const MUT  = "#5a7ab0"
 const BORD = "rgba(106,156,253,0.18)"
 const FG   = "#cee0ff"
 
+// Paleta de cores pessoais (identifica o usuário nos cursores em tempo real)
+export const CORES_PESSOAIS = [
+  "#6A9CFD", "#FFB8D0", "#FFD700", "#977DFF",
+  "#AEE4FF", "#4ADE80", "#FB923C", "#F472B6",
+  "#38BDF8", "#F87171", "#A3E635", "#E879F9",
+]
+
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -319,6 +326,7 @@ export function EditarPerfil({ user, onClose }: { user: User; onClose: () => voi
   const meta = user.user_metadata ?? {}
   const [nome,        setNome]        = useState<string>(meta.nome ?? "")
   const [email,       setEmail]       = useState<string>(user.email ?? "")
+  const [cor,         setCor]         = useState<string>(meta.cor ?? CORES_PESSOAIS[0])
   const [senhaAtual,  setSenhaAtual]  = useState("")
   const [novaSenha,   setNovaSenha]   = useState("")
   const [loading, setLoading] = useState(false)
@@ -332,7 +340,7 @@ export function EditarPerfil({ user, onClose }: { user: User; onClose: () => voi
 
 
     const updates: { email?: string; password?: string; data?: Record<string, string> } = {}
-    updates.data = { ...meta, nome }
+    updates.data = { ...meta, nome, cor }
 
 
     const emailChanged = email !== user.email
@@ -406,6 +414,31 @@ export function EditarPerfil({ user, onClose }: { user: User; onClose: () => voi
           </Field>
           <Field label="E-mail">
             <Input type="email" value={email} onChange={setEmail} />
+          </Field>
+
+          <Field label="Cor pessoal">
+            <div className="flex flex-wrap gap-2">
+              {CORES_PESSOAIS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCor(c)}
+                  title={c}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+                  style={{
+                    background: c,
+                    border: cor === c ? "2px solid #ffffff" : "2px solid transparent",
+                    boxShadow: cor === c ? `0 0 0 2px ${c}88` : "none",
+                    transform: cor === c ? "scale(1.08)" : "scale(1)",
+                  }}
+                >
+                  {cor === c && <span style={{ color: "#061428", fontSize: 11, fontWeight: 700 }}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontFamily: mono, fontSize: 9, color: MUT, marginTop: 4 }}>
+              Usada para te identificar nos cursores em tempo real.
+            </p>
           </Field>
 
 

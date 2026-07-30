@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from "react"
-import { Plus, X, GitBranch, Download, ChevronRight, UserCircle, ArrowLeft, EyeOff } from "lucide-react"
+import { Plus, X, GitBranch, Download, ChevronRight, ArrowLeft, EyeOff } from "lucide-react"
 import { AuthProvider } from "../auth/AuthContext"
 import { AuthGate } from "../auth/AuthGate"
 import { useAuth } from "../auth/AuthContext"
-import { EditarPerfil } from "../auth/AuthScreens"
 import { Dashboard, type RedeItem } from "./Dashboard"
 import { Grupos } from "./Grupos"
 import { supabase } from "../lib/supabase" // mesmo cliente usado no Dashboard
@@ -140,10 +139,10 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   const [loaded, setLoaded] = useState(false)
 
   // ══════════════ TEMPO REAL (colaboração) ══════════════
-  // Identidade desta sessão: id único + cor aleatória + nome exibido
+  // Identidade desta sessão: id único + cor pessoal (definida no perfil) + nome exibido
   const eu = useRef({
     id: Math.random().toString(36).slice(2),
-    cor: `hsl(${Math.floor(Math.random() * 360)}, 85%, 62%)`, // cor aleatória por sessão
+    cor: user?.user_metadata?.cor ?? `hsl(${Math.floor(Math.random() * 360)}, 85%, 62%)`, // fallback aleatório caso o usuário ainda não tenha escolhido uma cor
     nome: user?.user_metadata?.nome ?? user?.email ?? "Anônimo",
   })
   // Cursores das OUTRAS pessoas online: { sessionId: {x,y,cor,nome} }
@@ -272,7 +271,6 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
   const nodeDragRef = useRef<{ id: string; startMX: number; startMY: number; startNX: number; startNY: number; scale: number } | null>(null)
   const nodeWasDragged = useRef(false)
 
-  const [showProfile, setShowProfile] = useState(false)
   const [selected, setSelected] = useState<{ kind: "actor" | "relation"; id: string } | null>(null)
   const [viewMode, setViewMode] = useState<"orbital" | "grafo">("orbital")
   const [cascadeIds, setCascadeIds] = useState<Set<string>>(new Set())
@@ -451,17 +449,12 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
           <Download size={11} /> Export
         </button>
 
-        {/* Profile button */}
-        <button onClick={() => setShowProfile(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
-          style={{ fontFamily: mono, fontSize: 10, border: "1px solid rgba(106,156,253,0.2)",
-            color: "#5a7ab0", background: "transparent" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#cee0ff"; e.currentTarget.style.borderColor = "rgba(106,156,253,0.4)" }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#5a7ab0"; e.currentTarget.style.borderColor = "rgba(106,156,253,0.2)" }}
+        {/* Indicador de papel (edição de perfil agora só no Dashboard) */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+          style={{ fontFamily: mono, fontSize: 10, border: "1px solid rgba(106,156,253,0.2)", color: "#5a7ab0" }}
           title={`${user?.user_metadata?.nome ?? user?.email} · ${role}`}>
-          <UserCircle size={13} />
           <span>{role}</span>
-        </button>
+        </div>
       </div>
 
       {/* ── Canvas area ── */}
@@ -778,9 +771,6 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
       {/* Modals — editor-only */}
       {podeEditar && showAddActor    && <AddActorModal    atores={atores} onAdd={a => { setAtores(p => [...p, a]);    setShowAddActor(false)    }} onClose={() => setShowAddActor(false)} />}
       {podeEditar && showAddRelation && <AddRelationModal atores={atores} onAdd={r => { setRelacoes(p => [...p, r]); setShowAddRelation(false) }} onClose={() => setShowAddRelation(false)} />}
-
-      {/* Profile modal */}
-      {showProfile && user && <EditarPerfil user={user} onClose={() => setShowProfile(false)} />}
     </div>
   )
 }
