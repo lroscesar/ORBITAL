@@ -220,7 +220,7 @@ export function Dashboard({ onAbrirRede, onAbrirGrupos }: DashboardProps) {
         {/* Hero greeting */}
         <div className="mb-12">
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0", letterSpacing: "0.2em", marginBottom: 8 }}>
-            BEM-VINDO DE VOLTA
+            BEM-VINDE DE VOLTA
           </p>
           <h1 style={{ fontFamily: "'Exo 2', sans-serif", fontSize: 32, fontWeight: 800, color: "#cee0ff", lineHeight: 1.2 }}>
             Olá, {nome.split(" ")[0]}
