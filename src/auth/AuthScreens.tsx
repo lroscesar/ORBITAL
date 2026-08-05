@@ -248,10 +248,13 @@ export function Login({ onGoRegister, onGoRecover }: { onGoRegister: () => void;
         <Btn type="submit" disabled={loading}>{loading ? "Entrando…" : "Entrar"}</Btn>
 
 
-        {/* OAuth Google — preparado para ativação futura (RD05) */}
-        {/* <Btn variant="ghost" onClick={() => supabase.auth.signInWithOAuth({ provider: "google" })}>
+        {/* OAuth Google — botão ativo */}
+        <Btn variant="ghost" onClick={() => supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        })}>
           Entrar com Google
-        </Btn> */}
+        </Btn>
 
 
         <div className="flex flex-col items-center gap-2 pt-1">
