@@ -72,6 +72,36 @@ const TIPO_COLOR: Record<RelacaoTipo, string> = {
   Promessa: "#6A9CFD", Imposição: "#4B7BFF", Obrigação: "#2452C9", Delegação: "#FFB8D0",
 }
 
+const CUSTO_RECUSA_NIVEIS = {
+  baixo: {
+    label: "Baixo",
+    min: 0,
+    max: 3,
+    color: "#4B7BFF",
+    observacao: "Recusar implica baixo impacto e não impede a continuidade da operação.",
+  },
+  medio: {
+    label: "Médio",
+    min: 4,
+    max: 7,
+    color: "#E99632",
+    observacao: "Recusar implica penalidade financeira ou contratual, mas a operação continua possível.",
+  },
+  alto: {
+    label: "Alto",
+    min: 8,
+    max: 10,
+    color: "#D64126",
+    observacao: "Recusar implica perda de licença, capacidade de operar ou ruptura de infraestrutura obrigatória.",
+  },
+} as const
+
+function nivelCustoRecusa(valor: number) {
+  if (valor >= CUSTO_RECUSA_NIVEIS.alto.min) return CUSTO_RECUSA_NIVEIS.alto
+  if (valor >= CUSTO_RECUSA_NIVEIS.medio.min) return CUSTO_RECUSA_NIVEIS.medio
+  return CUSTO_RECUSA_NIVEIS.baixo
+}
+
 const CLASSE_COLOR: Record<AtorClasse, string> = {
   Humano: "#977DFF", Organizacional: "#4B7BFF", "Não humano": "#FFCCF2",
 }
@@ -734,6 +764,22 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
                 </div>
               ))}
             </LgSection>
+            <LgSection title="Custo de Recusa · 0–10">
+              {Object.values(CUSTO_RECUSA_NIVEIS).map(nivel => (
+                <div key={nivel.label} className="rounded-lg p-2.5" style={{
+                  background: `${nivel.color}0d`,
+                  border: `1px solid ${nivel.color}30`,
+                }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, color: nivel.color }}>{nivel.label}</span>
+                    <span style={{ fontFamily: mono, fontSize: 9, color: "#7894ba" }}>{nivel.min}–{nivel.max}</span>
+                  </div>
+                  <div className="mt-1.5" style={{ fontFamily: mono, fontSize: 8.5, lineHeight: 1.45, color: "#7894ba" }}>
+                    {nivel.observacao}
+                  </div>
+                </div>
+              ))}
+            </LgSection>
             <LgSection title="Marcadores">
               {[{ sym: "★", icon: null, color: "#FFD700", label: "PPO" }, { sym: null, icon: EyeOff, color: "#6A9CFD", label: "Caixa-preta" }].map(({ sym, icon: Icon, color, label }) => (
                 <div key={label} className="flex items-center gap-2">
@@ -1089,16 +1135,32 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
               </PField>
             )}
 
-            {relacao.custo_recusa !== undefined && (
-              <PField label="Custo de Recusa">
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(106,156,253,0.12)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${relacao.custo_recusa * 10}%`, background: "#6A9CFD", transition: "width 0.3s" }} />
+            {relacao.custo_recusa !== undefined && (() => {
+              const nivel = nivelCustoRecusa(relacao.custo_recusa)
+              return (
+                <PField label="Custo de Recusa">
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(106,156,253,0.12)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${relacao.custo_recusa * 10}%`, background: nivel.color, transition: "width 0.3s" }} />
+                    </div>
+                    <span style={{ fontFamily: mono, fontSize: 11, color: nivel.color }}>{relacao.custo_recusa}/10 · {nivel.label}</span>
                   </div>
-                  <span style={{ fontFamily: mono, fontSize: 11, color: "#6A9CFD" }}>{relacao.custo_recusa}/10</span>
-                </div>
-              </PField>
-            )}
+                  <div className="mt-2 p-2.5 rounded-lg" style={{
+                    background: `${nivel.color}12`,
+                    border: `1px solid ${nivel.color}35`,
+                    color: `${nivel.color}dd`,
+                    fontFamily: mono,
+                    fontSize: 9,
+                    lineHeight: 1.5,
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 3 }}>
+                      Observação · {nivel.label}
+                    </div>
+                    {nivel.observacao}
+                  </div>
+                </PField>
+              )
+            })()}
 
             {relacao.distancia_regulatoria !== undefined && (
               <PField label="Distância Regulatória">
@@ -1169,15 +1231,28 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                 style={{ fontFamily: mono, background: "#0a1535", borderColor: "rgba(106,156,253,0.25)", color: "#cee0ff" }}>
                 {(["Promessa", "Imposição", "Obrigação", "Delegação"] as RelacaoTipo[]).map(t => <option key={t}>{t}</option>)}
               </select>
-              {(editingRelacao.tipo === "Obrigação") && (
-                <div className="flex items-center gap-2">
-                  <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Custo recusa</span>
-                  <input type="range" min={1} max={10} value={editingRelacao.custo_recusa ?? 5}
-                    onChange={e => setEditingRelacao(p => p && ({ ...p, custo_recusa: +e.target.value }))}
-                    className="flex-1" />
-                  <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingRelacao.custo_recusa ?? 5}</span>
-                </div>
-              )}
+              {(editingRelacao.tipo === "Obrigação") && (() => {
+                const valor = editingRelacao.custo_recusa ?? 5
+                const nivel = nivelCustoRecusa(valor)
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Custo recusa</span>
+                      <input type="range" min={0} max={10} value={valor}
+                        onChange={e => setEditingRelacao(p => p && ({ ...p, custo_recusa: +e.target.value }))}
+                        className="flex-1" style={{ accentColor: nivel.color }} />
+                      <span style={{ fontFamily: mono, fontSize: 10, color: nivel.color }}>{valor}/10 · {nivel.label}</span>
+                    </div>
+                    <div className="p-2 rounded-lg" style={{
+                      background: `${nivel.color}10`,
+                      border: `1px solid ${nivel.color}30`,
+                      fontFamily: mono, fontSize: 9, lineHeight: 1.5, color: `${nivel.color}cc`
+                    }}>
+                      {nivel.observacao}
+                    </div>
+                  </div>
+                )
+              })()}
               <textarea value={editingRelacao.descricao ?? ""} onChange={e => setEditingRelacao(p => p && ({ ...p, descricao: e.target.value }))}
                 rows={2} placeholder='Descrição (opcional)'
                 className="w-full px-2.5 py-1.5 rounded-lg text-xs border outline-none resize-none"
@@ -1402,9 +1477,25 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label={`Custo de Recusa: ${custo}/10`}>
-              <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
-            </MField>
+            {(() => {
+              const nivel = nivelCustoRecusa(custo)
+              return (
+                <MField label={`Custo de Recusa: ${custo}/10 · ${nivel.label}`}>
+                  <input type="range" min={0} max={10} value={custo}
+                    onChange={e => setCusto(Number(e.target.value))}
+                    className="w-full mt-1" style={{ accentColor: nivel.color }} />
+                  <div className="mt-2 p-2.5 rounded-lg" style={{
+                    background: `${nivel.color}10`,
+                    border: `1px solid ${nivel.color}30`,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 9, lineHeight: 1.5, color: `${nivel.color}cc`
+                  }}>
+                    <strong style={{ color: nivel.color }}>Observação · {nivel.label}</strong>
+                    <div className="mt-1">{nivel.observacao}</div>
+                  </div>
+                </MField>
+              )
+            })()}
             <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
             </MField>
