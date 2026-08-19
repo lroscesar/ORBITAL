@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase" // mesmo cliente usado no Dashboard
 
 type AtorClasse = "Humano" | "Organizacional" | "Não humano"
 type RelacaoTipo = "Promessa" | "Imposição" | "Obrigação" | "Delegação"
+type CustoRecusa = "Baixo" | "Médio" | "Alto"
 
 interface Ator {
   id: string
@@ -30,7 +31,7 @@ interface Relacao {
   tipo: RelacaoTipo
   ator_origem_id: string
   ator_destino_id: string
-  custo_recusa?: number
+  custo_recusa?: CustoRecusa
   distancia_regulatoria?: number
   descricao?: string   // descrição opcional (ex: "impõe Y ao banco")
 }
@@ -53,7 +54,7 @@ const STARS = Array.from({ length: 160 }, (_, i) => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const nR = (peso: number) => 10 + peso * 4.5
+const nR = (peso: number) => 14 + peso * 8 // escala 0–5
 
 const NODE_FILL: Record<AtorClasse, string> = {
   Humano:          "url(#grad-humano)",
@@ -74,6 +75,14 @@ const TIPO_COLOR: Record<RelacaoTipo, string> = {
 
 const CLASSE_COLOR: Record<AtorClasse, string> = {
   Humano: "#977DFF", Organizacional: "#4B7BFF", "Não humano": "#FFCCF2",
+}
+
+const CUSTO_RECUSA_COLOR: Record<CustoRecusa, string> = {
+  Baixo: "#6AE4A0", Médio: "#FFD700", Alto: "#ef4444",
+}
+
+const CUSTO_RECUSA_PCT: Record<CustoRecusa, number> = {
+  Baixo: 33, Médio: 66, Alto: 100,
 }
 
 function curvePath(a: Ator, b: Ator, curve = 28) {
@@ -581,7 +590,9 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
                     <g transform={`translate(${cpx},${cpy})`} opacity={opacity}>
                       <path d="M0,-8 L7,0 L0,8 L-7,0 Z" fill="#2452C9" stroke="#AEE4FF" strokeWidth={0.7} />
                       {rel.custo_recusa !== undefined && (
-                        <text x={11} y={4} fill="#AEE4FF" fontSize={8} style={{ fontFamily: mono }}>{rel.custo_recusa}</text>
+                        <text x={11} y={4} fill={CUSTO_RECUSA_COLOR[rel.custo_recusa]} fontSize={8} fontWeight={700} style={{ fontFamily: mono }}>
+                          {rel.custo_recusa[0]}
+                        </text>
                       )}
                     </g>
                   )}
@@ -886,8 +897,8 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
           </div>
 
           <div>
-            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginBottom: 4 }}>Peso: {peso}/10</div>
-            <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
+            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginBottom: 4 }}>Peso: {peso}/5</div>
+            <input type="range" min={0} max={5} value={peso} onChange={e => setPeso(Number(e.target.value))}
               className="w-full" style={{ accentColor: "#FFB8D0" }} />
           </div>
 
@@ -996,11 +1007,11 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             <PField label="Peso Hierárquico">
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex gap-0.5 flex-1">
-                  {Array.from({ length: 10 }).map((_, i) => (
+                  {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="flex-1 h-2 rounded-sm" style={{ background: i < ator.peso_hierarquico ? "#6A9CFD" : "rgba(106,156,253,0.1)" }} />
                   ))}
                 </div>
-                <span style={{ fontFamily: mono, fontSize: 11, color: "#6A9CFD" }}>{ator.peso_hierarquico}</span>
+                <span style={{ fontFamily: mono, fontSize: 11, color: "#6A9CFD" }}>{ator.peso_hierarquico}/5</span>
               </div>
             </PField>
 
@@ -1093,9 +1104,9 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
               <PField label="Custo de Recusa">
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(106,156,253,0.12)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${relacao.custo_recusa * 10}%`, background: "#6A9CFD", transition: "width 0.3s" }} />
+                    <div className="h-full rounded-full" style={{ width: `${CUSTO_RECUSA_PCT[relacao.custo_recusa]}%`, background: CUSTO_RECUSA_COLOR[relacao.custo_recusa], transition: "width 0.3s" }} />
                   </div>
-                  <span style={{ fontFamily: mono, fontSize: 11, color: "#6A9CFD" }}>{relacao.custo_recusa}/10</span>
+                  <span style={{ fontFamily: mono, fontSize: 11, color: CUSTO_RECUSA_COLOR[relacao.custo_recusa] }}>{relacao.custo_recusa}</span>
                 </div>
               </PField>
             )}
@@ -1145,10 +1156,10 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
               </select>
               <div className="flex items-center gap-2">
                 <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Peso</span>
-                <input type="range" min={1} max={10} value={editingAtor.peso_hierarquico}
+                <input type="range" min={0} max={5} value={editingAtor.peso_hierarquico}
                   onChange={e => setEditingAtor(p => p && ({ ...p, peso_hierarquico: +e.target.value }))}
                   className="flex-1" />
-                <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingAtor.peso_hierarquico}</span>
+                <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingAtor.peso_hierarquico}/5</span>
               </div>
               <textarea value={editingAtor.descricao ?? ""} onChange={e => setEditingAtor(p => p && ({ ...p, descricao: e.target.value }))}
                 rows={2} placeholder='Descrição (opcional)'
@@ -1170,12 +1181,24 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                 {(["Promessa", "Imposição", "Obrigação", "Delegação"] as RelacaoTipo[]).map(t => <option key={t}>{t}</option>)}
               </select>
               {(editingRelacao.tipo === "Obrigação") && (
-                <div className="flex items-center gap-2">
-                  <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Custo recusa</span>
-                  <input type="range" min={1} max={10} value={editingRelacao.custo_recusa ?? 5}
-                    onChange={e => setEditingRelacao(p => p && ({ ...p, custo_recusa: +e.target.value }))}
-                    className="flex-1" />
-                  <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingRelacao.custo_recusa ?? 5}</span>
+                <div className="space-y-1">
+                  <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Custo de Recusa</span>
+                  <div className="flex gap-1.5">
+                    {(["Baixo", "Médio", "Alto"] as CustoRecusa[]).map(nivel => {
+                      const ativo = (editingRelacao.custo_recusa ?? "Médio") === nivel
+                      return (
+                        <button key={nivel} type="button"
+                          onClick={() => setEditingRelacao(p => p && ({ ...p, custo_recusa: nivel }))}
+                          className="flex-1 py-1 rounded-md border text-[10px] transition-all"
+                          style={{ fontFamily: mono,
+                            background: ativo ? `${CUSTO_RECUSA_COLOR[nivel]}18` : "transparent",
+                            borderColor: ativo ? `${CUSTO_RECUSA_COLOR[nivel]}55` : "rgba(106,156,253,0.15)",
+                            color: ativo ? CUSTO_RECUSA_COLOR[nivel] : "#5a7ab0" }}>
+                          {nivel}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
               <textarea value={editingRelacao.descricao ?? ""} onChange={e => setEditingRelacao(p => p && ({ ...p, descricao: e.target.value }))}
@@ -1294,8 +1317,8 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           </div>
         </MField>
 
-        <MField label={`Peso Hierárquico: ${peso}/10`}>
-          <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
+        <MField label={`Peso Hierárquico: ${peso}/5`}>
+          <input type="range" min={0} max={5} value={peso} onChange={e => setPeso(Number(e.target.value))}
             className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
           <div className="flex justify-between mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0" }}>
             <span>menor poder</span><span>maior poder</span>
@@ -1332,7 +1355,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   const [tipo, setTipo] = useState<RelacaoTipo>("Promessa")
   const [origemId, setOrigemId] = useState(atores[0]?.id ?? "")
   const [destinoId, setDestinoId] = useState(atores[1]?.id ?? "")
-  const [custo, setCusto] = useState(5)
+  const [custo, setCusto] = useState<CustoRecusa>("Médio")
   const [dist, setDist] = useState(3)
   const [descricao, setDescricao] = useState("")   // descrição opcional
   const [error, setError] = useState("")
@@ -1402,8 +1425,19 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label={`Custo de Recusa: ${custo}/10`}>
-              <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
+            <MField label="Custo de Recusa">
+              <div className="flex gap-2 mt-1">
+                {(["Baixo", "Médio", "Alto"] as CustoRecusa[]).map(nivel => (
+                  <button key={nivel} type="button" onClick={() => setCusto(nivel)}
+                    className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
+                    style={{ fontFamily: "'JetBrains Mono', monospace",
+                      background: custo === nivel ? `${CUSTO_RECUSA_COLOR[nivel]}18` : "transparent",
+                      borderColor: custo === nivel ? `${CUSTO_RECUSA_COLOR[nivel]}55` : "rgba(106,156,253,0.15)",
+                      color: custo === nivel ? CUSTO_RECUSA_COLOR[nivel] : "#5a7ab0" }}>
+                    {nivel}
+                  </button>
+                ))}
+              </div>
             </MField>
             <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
