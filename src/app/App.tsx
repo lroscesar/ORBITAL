@@ -85,6 +85,12 @@ const CUSTO_RECUSA_PCT: Record<CustoRecusa, number> = {
   Baixo: 33, Médio: 66, Alto: 100,
 }
 
+const CUSTO_RECUSA_DESC: Record<CustoRecusa, string> = {
+  Baixo:  "Recusar implica apenas dano reputacional, sem sanção formal identificada.",
+  Médio:  "Recusar implica penalidade financeira ou contratual, mas a operação do ator continua possível.",
+  Alto:   "Recusar a promessa implica perda de licença, capacidade de operar ou ruptura de infraestrutura obrigatória.",
+}
+
 function curvePath(a: Ator, b: Ator, curve = 28) {
   const mx = (a.x + b.x) / 2
   const my = (a.y + b.y) / 2
@@ -1108,6 +1114,9 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                   </div>
                   <span style={{ fontFamily: mono, fontSize: 11, color: CUSTO_RECUSA_COLOR[relacao.custo_recusa] }}>{relacao.custo_recusa}</span>
                 </div>
+                <p style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0", lineHeight: 1.5, marginTop: 6 }}>
+                  {CUSTO_RECUSA_DESC[relacao.custo_recusa]}
+                </p>
               </PField>
             )}
 
@@ -1189,6 +1198,7 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                       return (
                         <button key={nivel} type="button"
                           onClick={() => setEditingRelacao(p => p && ({ ...p, custo_recusa: nivel }))}
+                          title={CUSTO_RECUSA_DESC[nivel]}
                           className="flex-1 py-1 rounded-md border text-[10px] transition-all"
                           style={{ fontFamily: mono,
                             background: ativo ? `${CUSTO_RECUSA_COLOR[nivel]}18` : "transparent",
@@ -1429,6 +1439,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
               <div className="flex gap-2 mt-1">
                 {(["Baixo", "Médio", "Alto"] as CustoRecusa[]).map(nivel => (
                   <button key={nivel} type="button" onClick={() => setCusto(nivel)}
+                    title={CUSTO_RECUSA_DESC[nivel]}
                     className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
                     style={{ fontFamily: "'JetBrains Mono', monospace",
                       background: custo === nivel ? `${CUSTO_RECUSA_COLOR[nivel]}18` : "transparent",
@@ -1438,6 +1449,9 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
                   </button>
                 ))}
               </div>
+              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5a7ab0", lineHeight: 1.5, marginTop: 6 }}>
+                {CUSTO_RECUSA_DESC[custo]}
+              </p>
             </MField>
             <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
