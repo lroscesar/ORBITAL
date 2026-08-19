@@ -202,7 +202,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
     return () => { ativo = false }
   }, [rede.grupoId, user?.id])
 
-  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda".
+  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda"
   //   - Rede pessoal: usa o isEditor do login.
   //   - Rede de grupo: só edita se for dono ou editor NAQUELE grupo.
   const podeEditar = rede.grupoId
