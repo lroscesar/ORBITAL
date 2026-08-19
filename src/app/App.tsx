@@ -30,7 +30,7 @@ interface Relacao {
   tipo: RelacaoTipo
   ator_origem_id: string
   ator_destino_id: string
-  custo_recusa?: "Baixo" | "Médio" | "Alto"
+  custo_recusa?: number
   distancia_regulatoria?: number
   descricao?: string   // descrição opcional (ex: "impõe Y ao banco")
 }
@@ -71,21 +71,6 @@ const EDGE_CFG: Record<RelacaoTipo, { stroke: string; width: number; dash?: stri
 const TIPO_COLOR: Record<RelacaoTipo, string> = {
   Promessa: "#6A9CFD", Imposição: "#4B7BFF", Obrigação: "#2452C9", Delegação: "#FFB8D0",
 }
-
-const CUSTO_RECUSA_INFO = {
-  Baixo: {
-    color: "#4B7BFF",
-    descricao: "Recusar implica apenas dano reputacional, sem sanção formal identificável.",
-  },
-  Médio: {
-    color: "#E99A2E",
-    descricao: "Recusar implica penalidade financeira ou contratual, mas a operação do ator continua possível.",
-  },
-  Alto: {
-    color: "#D9432E",
-    descricao: "Recusar a promessa implica perda de licença, capacidade de operar ou ruptura de infraestrutura obrigatória.",
-  },
-} as const
 
 const CLASSE_COLOR: Record<AtorClasse, string> = {
   Humano: "#977DFF", Organizacional: "#4B7BFF", "Não humano": "#FFCCF2",
@@ -187,7 +172,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
     return () => { ativo = false }
   }, [rede.grupoId, user?.id])
 
-  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda"
+  // 🔑 REGRA DE EDIÇÃO: "papel do grupo manda".
   //   - Rede pessoal: usa o isEditor do login.
   //   - Rede de grupo: só edita se for dono ou editor NAQUELE grupo.
   const podeEditar = rede.grupoId
@@ -206,10 +191,7 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
       .then(({ data, error }) => {
         if (!ativo) return
         const d = (!error && data?.dados) ? data.dados : {}
-        setAtores((d.atores ?? []).map((a: Ator) => ({
-          ...a,
-          peso_hierarquico: Math.min(5, Math.max(0, Number(a.peso_hierarquico ?? 0))),
-        })))
+        setAtores(d.atores ?? [])
         setRelacoes(d.relacoes ?? [])
         setConstelacoes(d.constelacoes ?? [])
         setLoaded(true)
@@ -598,6 +580,9 @@ function Orbital({ rede, onVoltar }: { rede: RedeItem; onVoltar: () => void }) {
                   {rel.tipo === "Obrigação" && (
                     <g transform={`translate(${cpx},${cpy})`} opacity={opacity}>
                       <path d="M0,-8 L7,0 L0,8 L-7,0 Z" fill="#2452C9" stroke="#AEE4FF" strokeWidth={0.7} />
+                      {rel.custo_recusa !== undefined && (
+                        <text x={11} y={4} fill="#AEE4FF" fontSize={8} style={{ fontFamily: mono }}>{rel.custo_recusa}</text>
+                      )}
                     </g>
                   )}
                 </g>
@@ -901,8 +886,8 @@ function ComposicaoTab({ parent, children, canEdit, onToggleBlackBox, onAddChild
           </div>
 
           <div>
-            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginBottom: 4 }}>Peso: {peso}/5</div>
-            <input type="range" min={0} max={5} value={peso} onChange={e => setPeso(Number(e.target.value))}
+            <div style={{ fontFamily: mono, fontSize: 9, color: "#5a7ab0", marginBottom: 4 }}>Peso: {peso}/10</div>
+            <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
               className="w-full" style={{ accentColor: "#FFB8D0" }} />
           </div>
 
@@ -1011,7 +996,7 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
             <PField label="Peso Hierárquico">
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex gap-0.5 flex-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from({ length: 10 }).map((_, i) => (
                     <div key={i} className="flex-1 h-2 rounded-sm" style={{ background: i < ator.peso_hierarquico ? "#6A9CFD" : "rgba(106,156,253,0.1)" }} />
                   ))}
                 </div>
@@ -1104,6 +1089,17 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
               </PField>
             )}
 
+            {relacao.custo_recusa !== undefined && (
+              <PField label="Custo de Recusa">
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(106,156,253,0.12)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${relacao.custo_recusa * 10}%`, background: "#6A9CFD", transition: "width 0.3s" }} />
+                  </div>
+                  <span style={{ fontFamily: mono, fontSize: 11, color: "#6A9CFD" }}>{relacao.custo_recusa}/10</span>
+                </div>
+              </PField>
+            )}
+
             {relacao.distancia_regulatoria !== undefined && (
               <PField label="Distância Regulatória">
                 <div className="flex items-center gap-2 mt-1">
@@ -1149,7 +1145,7 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
               </select>
               <div className="flex items-center gap-2">
                 <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Peso</span>
-                <input type="range" min={0} max={5} value={editingAtor.peso_hierarquico}
+                <input type="range" min={1} max={10} value={editingAtor.peso_hierarquico}
                   onChange={e => setEditingAtor(p => p && ({ ...p, peso_hierarquico: +e.target.value }))}
                   className="flex-1" />
                 <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingAtor.peso_hierarquico}</span>
@@ -1173,6 +1169,15 @@ function RightPanel({ ator, relacao, actorMap, atores, onClose, onToggleBlackBox
                 style={{ fontFamily: mono, background: "#0a1535", borderColor: "rgba(106,156,253,0.25)", color: "#cee0ff" }}>
                 {(["Promessa", "Imposição", "Obrigação", "Delegação"] as RelacaoTipo[]).map(t => <option key={t}>{t}</option>)}
               </select>
+              {(editingRelacao.tipo === "Obrigação") && (
+                <div className="flex items-center gap-2">
+                  <span style={{ fontFamily: mono, fontSize: 10, color: "#5a7ab0" }}>Custo recusa</span>
+                  <input type="range" min={1} max={10} value={editingRelacao.custo_recusa ?? 5}
+                    onChange={e => setEditingRelacao(p => p && ({ ...p, custo_recusa: +e.target.value }))}
+                    className="flex-1" />
+                  <span style={{ fontFamily: mono, fontSize: 10, color: "#6A9CFD" }}>{editingRelacao.custo_recusa ?? 5}</span>
+                </div>
+              )}
               <textarea value={editingRelacao.descricao ?? ""} onChange={e => setEditingRelacao(p => p && ({ ...p, descricao: e.target.value }))}
                 rows={2} placeholder='Descrição (opcional)'
                 className="w-full px-2.5 py-1.5 rounded-lg text-xs border outline-none resize-none"
@@ -1289,8 +1294,8 @@ function AddActorModal({ atores: _atores, onAdd, onClose }: { atores: Ator[]; on
           </div>
         </MField>
 
-        <MField label={`Peso Hierárquico: ${peso}/5`}>
-          <input type="range" min={0} max={5} value={peso} onChange={e => setPeso(Number(e.target.value))}
+        <MField label={`Peso Hierárquico: ${peso}/10`}>
+          <input type="range" min={1} max={10} value={peso} onChange={e => setPeso(Number(e.target.value))}
             className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
           <div className="flex justify-between mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5a7ab0" }}>
             <span>menor poder</span><span>maior poder</span>
@@ -1327,7 +1332,7 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
   const [tipo, setTipo] = useState<RelacaoTipo>("Promessa")
   const [origemId, setOrigemId] = useState(atores[0]?.id ?? "")
   const [destinoId, setDestinoId] = useState(atores[1]?.id ?? "")
-  const [custo, setCusto] = useState<"Baixo" | "Médio" | "Alto">("Médio")
+  const [custo, setCusto] = useState(5)
   const [dist, setDist] = useState(3)
   const [descricao, setDescricao] = useState("")   // descrição opcional
   const [error, setError] = useState("")
@@ -1397,28 +1402,8 @@ function AddRelationModal({ atores, onAdd, onClose }: { atores: Ator[]; onAdd: (
 
         {tipo === "Obrigação" && (
           <>
-            <MField label="Custo de Recusa">
-              <div className="grid grid-cols-3 gap-2">
-                {(["Baixo", "Médio", "Alto"] as const).map(nivel => (
-                  <button key={nivel} type="button" onClick={() => setCusto(nivel)}
-                    className="py-2 rounded-lg text-xs border transition-all"
-                    style={{ fontFamily: "'JetBrains Mono', monospace",
-                      background: custo === nivel ? `${CUSTO_RECUSA_INFO[nivel].color}18` : "transparent",
-                      borderColor: custo === nivel ? `${CUSTO_RECUSA_INFO[nivel].color}66` : "rgba(106,156,253,0.15)",
-                      color: custo === nivel ? CUSTO_RECUSA_INFO[nivel].color : "#5a7ab0" }}>
-                    {nivel}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 p-3 rounded-lg" style={{
-                background: `${CUSTO_RECUSA_INFO[custo].color}0d`,
-                border: `1px solid ${CUSTO_RECUSA_INFO[custo].color}33`,
-                color: CUSTO_RECUSA_INFO[custo].color,
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 10, lineHeight: 1.6,
-              }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>OBSERVAÇÃO · {custo.toUpperCase()}</div>
-                <div>{CUSTO_RECUSA_INFO[custo].descricao}</div>
-              </div>
+            <MField label={`Custo de Recusa: ${custo}/10`}>
+              <input type="range" min={1} max={10} value={custo} onChange={e => setCusto(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#6A9CFD" }} />
             </MField>
             <MField label={`Distância Regulatória: ${dist}/5`}>
               <input type="range" min={1} max={5} value={dist} onChange={e => setDist(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: "#FFB8D0" }} />
